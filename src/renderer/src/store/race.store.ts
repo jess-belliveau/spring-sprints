@@ -17,6 +17,7 @@ function makeLane(rider: { riderId: string; riderName: string }): LiveLaneState 
     riderId: rider.riderId,
     riderName: rider.riderName,
     distanceCovered: 0,
+    velocityMs: 0,
     instantWatts: 0,
     cadenceRpm: 0,
     elapsedMs: 0,
@@ -75,6 +76,7 @@ export const useRaceStore = create<RaceState>((set) => ({
             // During countdown the main process sends distanceCovered=0; honour it
             // so position never advances before GO fires.
             distanceCovered: frame.distanceCovered,
+            velocityMs: frame.velocityMs,
             instantWatts: frame.instantWatts,
             cadenceRpm: frame.cadenceRpm,
             elapsedMs: frame.elapsedMs

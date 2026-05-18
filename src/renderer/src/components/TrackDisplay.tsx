@@ -9,8 +9,8 @@ const INNER_R = 162
 const STROKE = 36
 const SOLO_R = 194
 
-// Telemetry arrives ~10 Hz; CSS transition bridges each gap on the compositor thread.
-const ARC_TRANSITION = 'stroke-dashoffset 110ms linear, opacity 150ms ease'
+// Cap dead-reckoning extrapolation at 200ms to avoid runaway between ticks
+const MAX_EXTRAP_S = 0.2
 
 interface Props {
   left: { riderName: string } | null
@@ -36,10 +36,8 @@ function fmt(ms: number): string {
 export function TrackDisplay({ left, right, targetDistance }: Props) {
   const hasBoth = left !== null && right !== null
   const leftR = hasBoth ? INNER_R : SOLO_R
-  const rightR = OUTER_R
 
-  // Keep prop values in refs so the subscription closure always reads current values
-  // without needing to re-subscribe on every prop change.
+  // Keep prop values in refs so closures always read current values
   const hasBothRef = useRef(hasBoth)
   hasBothRef.current = hasBoth
   const leftRRef = useRef(leftR)
@@ -70,38 +68,99 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
   const rightTimeRef = useRef<HTMLSpanElement>(null)
   const rightFinishedRef = useRef<HTMLSpanElement>(null)
 
-  // Single subscription — drives all DOM updates directly from telemetry ticks.
-  // stroke-dashoffset is set as a CSS *property* (element.style) so the CSS
-  // transition declared on the element smooths each tick on the compositor thread.
-  // No JS animation loop, no lerp.
+  // Physics state for dead reckoning — updated by subscription at ~10 Hz
+  const leftPhysRef  = useRef({ pos: 0, vel: 0, ts: 0 })
+  const rightPhysRef = useRef({ pos: 0, vel: 0, ts: 0 })
+
+  // Leads state written by subscription, read by RAF
+  const leftLeadsStateRef  = useRef(false)
+  const rightLeadsStateRef = useRef(false)
+
+  const rafRef = useRef(0)
+
   useEffect(() => {
-    return useRaceStore.subscribe((state) => {
+    // Subscription updates physics refs and all stats text at telemetry rate (~10 Hz)
+    const unsubscribe = useRaceStore.subscribe((state) => {
       const l = state.race?.left
       const r = state.race?.right
-      const hb = hasBothRef.current
-      const lR = leftRRef.current
-      const rR = rightRRef.current
-      const dist = targetDistanceRef.current
+      const now = Date.now()
 
+      if (l) {
+        leftPhysRef.current = { pos: l.distanceCovered, vel: l.finished ? 0 : l.velocityMs, ts: now }
+      }
+      if (r) {
+        rightPhysRef.current = { pos: r.distanceCovered, vel: r.finished ? 0 : r.velocityMs, ts: now }
+      }
+
+      const hb = hasBothRef.current
       const leftDist  = l?.distanceCovered ?? 0
       const rightDist = r?.distanceCovered ?? 0
-      const leftPct   = leftDist  / dist
-      const rightPct  = rightDist / dist
       const leftLeads  = hb && leftDist  > rightDist + 0.5
       const rightLeads = hb && rightDist > leftDist  + 0.5
       const gap = Math.round(Math.abs(leftDist - rightDist))
 
-      // ── Arcs (CSS style so transition applies) ──────────────────────────────
+      leftLeadsStateRef.current  = leftLeads
+      rightLeadsStateRef.current = rightLeads
+
+      // Stats text
+      if (l) {
+        if (leftDistRef.current)     leftDistRef.current.textContent     = String(Math.round(leftDist))
+        if (leftWattsRef.current)    leftWattsRef.current.textContent    = String(l.instantWatts)
+        if (leftCadenceRef.current)  leftCadenceRef.current.textContent  = String(l.cadenceRpm)
+        if (leftTimeRef.current)     leftTimeRef.current.textContent     = fmt(l.elapsedMs)
+        if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
+      }
+      if (r) {
+        if (rightDistRef.current)     rightDistRef.current.textContent     = String(Math.round(rightDist))
+        if (rightWattsRef.current)    rightWattsRef.current.textContent    = String(r.instantWatts)
+        if (rightCadenceRef.current)  rightCadenceRef.current.textContent  = String(r.cadenceRpm)
+        if (rightTimeRef.current)     rightTimeRef.current.textContent     = fmt(r.elapsedMs)
+        if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
+      }
+
+      if (leftLeadsRef.current) {
+        leftLeadsRef.current.style.visibility = leftLeads ? 'visible' : 'hidden'
+        if (leftLeads) leftLeadsRef.current.textContent = `▲ LEADS +${gap}m`
+      }
+      if (rightLeadsRef.current) {
+        rightLeadsRef.current.style.visibility = rightLeads ? 'visible' : 'hidden'
+        if (rightLeads) rightLeadsRef.current.textContent = `▲ LEADS +${gap}m`
+      }
+    })
+
+    // RAF loop drives arc and dot positions at 60fps via dead reckoning
+    function tick() {
+      const now  = Date.now()
+      const dist = targetDistanceRef.current
+      const hb   = hasBothRef.current
+      const lR   = leftRRef.current
+
+      const lPhys = leftPhysRef.current
+      const rPhys = rightPhysRef.current
+
+      const lDt = lPhys.ts > 0 ? Math.min((now - lPhys.ts) / 1000, MAX_EXTRAP_S) : 0
+      const rDt = rPhys.ts > 0 ? Math.min((now - rPhys.ts) / 1000, MAX_EXTRAP_S) : 0
+
+      const leftEstDist  = Math.min(dist, lPhys.pos + lPhys.vel * lDt)
+      const rightEstDist = Math.min(dist, rPhys.pos + rPhys.vel * rDt)
+
+      const leftPct  = leftEstDist  / dist
+      const rightPct = rightEstDist / dist
+
+      const leftLeads  = leftLeadsStateRef.current
+      const rightLeads = rightLeadsStateRef.current
+
+      // Arcs
       if (leftArcRef.current) {
         leftArcRef.current.style.strokeDashoffset = String(arcOffset(lR, leftPct))
         leftArcRef.current.style.opacity = hb && rightLeads ? '0.4' : '1'
       }
       if (rightArcRef.current) {
-        rightArcRef.current.style.strokeDashoffset = String(arcOffset(rR, rightPct))
+        rightArcRef.current.style.strokeDashoffset = String(arcOffset(OUTER_R, rightPct))
         rightArcRef.current.style.opacity = hb && leftLeads ? '0.4' : '1'
       }
 
-      // ── Left dot ────────────────────────────────────────────────────────────
+      // Left dot
       if (leftPct > 0.001) {
         const [lx, ly] = dotXY(leftPct, lR)
         if (leftDotRef.current) {
@@ -120,9 +179,9 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         if (leftGlowRef.current) leftGlowRef.current.style.display = 'none'
       }
 
-      // ── Right dot ───────────────────────────────────────────────────────────
+      // Right dot
       if (rightPct > 0.001) {
-        const [rx, ry] = dotXY(rightPct, rR)
+        const [rx, ry] = dotXY(rightPct, OUTER_R)
         if (rightDotRef.current) {
           rightDotRef.current.setAttribute('cx', String(rx))
           rightDotRef.current.setAttribute('cy', String(ry))
@@ -139,33 +198,20 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         if (rightGlowRef.current) rightGlowRef.current.style.display = 'none'
       }
 
-      // ── Stats text ──────────────────────────────────────────────────────────
-      if (l) {
-        if (leftDistRef.current)    leftDistRef.current.textContent    = String(Math.round(leftDist))
-        if (leftWattsRef.current)   leftWattsRef.current.textContent   = String(l.instantWatts)
-        if (leftCadenceRef.current) leftCadenceRef.current.textContent = String(l.cadenceRpm)
-        if (leftTimeRef.current)    leftTimeRef.current.textContent    = fmt(l.elapsedMs)
-        if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
+      // Solo centre distance
+      if (centreDistRef.current) {
+        centreDistRef.current.textContent = `${Math.round(leftEstDist)}m`
       }
-      if (r) {
-        if (rightDistRef.current)    rightDistRef.current.textContent    = String(Math.round(rightDist))
-        if (rightWattsRef.current)   rightWattsRef.current.textContent   = String(r.instantWatts)
-        if (rightCadenceRef.current) rightCadenceRef.current.textContent = String(r.cadenceRpm)
-        if (rightTimeRef.current)    rightTimeRef.current.textContent    = fmt(r.elapsedMs)
-        if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
-      }
-      if (centreDistRef.current) centreDistRef.current.textContent = `${Math.round(leftDist)}m`
 
-      // ── Leads ───────────────────────────────────────────────────────────────
-      if (leftLeadsRef.current) {
-        leftLeadsRef.current.style.visibility = leftLeads ? 'visible' : 'hidden'
-        if (leftLeads) leftLeadsRef.current.textContent = `▲ LEADS +${gap}m`
-      }
-      if (rightLeadsRef.current) {
-        rightLeadsRef.current.style.visibility = rightLeads ? 'visible' : 'hidden'
-        if (rightLeads) rightLeadsRef.current.textContent = `▲ LEADS +${gap}m`
-      }
-    })
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+
+    return () => {
+      unsubscribe()
+      cancelAnimationFrame(rafRef.current)
+    }
   }, [])
 
   // React renders the DOM structure once — all live updates happen imperatively above
@@ -214,7 +260,7 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         )}
         <circle cx={CX} cy={CY} r={leftR} fill="none" style={{ stroke: 'var(--track-bg)' }} strokeWidth={STROKE} />
 
-        {/* Right arc — stroke-dashoffset set as CSS property so transition applies */}
+        {/* Right arc — strokeDashoffset driven by RAF at 60fps */}
         {right && (
           <circle
             ref={rightArcRef}
@@ -227,7 +273,6 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
             style={{
               stroke: 'var(--lane-right)',
               strokeDashoffset: 2 * Math.PI * OUTER_R,
-              transition: ARC_TRANSITION,
             }}
           />
         )}
@@ -245,12 +290,11 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
             style={{
               stroke: 'var(--lane-left)',
               strokeDashoffset: 2 * Math.PI * leftR,
-              transition: ARC_TRANSITION,
             }}
           />
         )}
 
-        {/* Dots — hidden initially, positioned by subscription */}
+        {/* Dots — hidden initially, positioned by RAF */}
         {right && (
           <>
             <circle ref={rightGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-right)', display: 'none' }} opacity={0.25} />
@@ -320,6 +364,3 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
     </div>
   )
 }
-
-// Needed by the subscription closure — module-level so it doesn't recreate on render
-const rightRRef = { current: OUTER_R }

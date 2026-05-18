@@ -43,6 +43,7 @@ export interface TelemetryFrame {
   raceId: string
   elapsedMs: number
   distanceCovered: number
+  velocityMs: number
   instantWatts: number
   cadenceRpm: number
 }
@@ -115,6 +116,7 @@ export interface LiveLaneState {
   riderId: string
   riderName: string
   distanceCovered: number
+  velocityMs: number
   instantWatts: number
   cadenceRpm: number
   elapsedMs: number

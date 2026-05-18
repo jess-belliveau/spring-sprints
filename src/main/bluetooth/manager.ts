@@ -262,6 +262,7 @@ export class BluetoothManager extends EventEmitter {
           raceId: this.currentRaceId,
           elapsedMs: elapsed,
           distanceCovered: 0,
+          velocityMs: 0,
           instantWatts: data.instantaneousPower,
           cadenceRpm: Math.round(data.instantaneousCadence * 0.5)
         })
@@ -294,6 +295,7 @@ export class BluetoothManager extends EventEmitter {
         raceId: this.currentRaceId,
         elapsedMs,
         distanceCovered,
+        velocityMs: watcher.velocityMs,
         instantWatts: data.instantaneousPower,
         cadenceRpm: Math.round(data.instantaneousCadence * 0.5)
       }
