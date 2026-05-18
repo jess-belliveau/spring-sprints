@@ -5,6 +5,7 @@ export const IPC = {
   BLUETOOTH_CONNECT: 'bluetooth:connect',
   BLUETOOTH_DISCONNECT: 'bluetooth:disconnect',
   RACE_START: 'race:start',
+  RACE_GO: 'race:go',
   RACE_STOP: 'race:stop',
   EVENT_SAVE: 'event:save',
   EVENT_LOAD: 'event:load',

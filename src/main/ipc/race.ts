@@ -15,6 +15,10 @@ export function registerRaceHandlers(
     }
   )
 
+  ipcMain.handle(IPC.RACE_GO, () => {
+    manager.raceGo()
+  })
+
   ipcMain.handle(IPC.RACE_STOP, () => {
     manager.stopRaceMonitoring()
   })

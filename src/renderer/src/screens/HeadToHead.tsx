@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectRiders, selectBracket, selectConfig } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
@@ -27,6 +27,17 @@ export function HeadToHead() {
   const internalRaceIdRef = useRef<string>('')
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
+  const heldRef = useRef(false)
+  const [countdownHeld, setCountdownHeld] = useState(false)
+  const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
+
+  const WATT_THRESHOLD = 10
+  const leftWatts = race?.left?.instantWatts ?? 0
+  const rightWatts = race?.right?.instantWatts ?? 0
+  const shouldHold = falseStartEnabled && race?.status === 'countdown' &&
+    (leftWatts > WATT_THRESHOLD || rightWatts > WATT_THRESHOLD)
+  heldRef.current = shouldHold
+  if (shouldHold !== countdownHeld) setCountdownHeld(shouldHold)
 
   const currentMatch = bracket.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null
   const leftRider = riders.find((r) => r.id === currentMatch?.topRiderId)
@@ -77,9 +88,14 @@ export function HeadToHead() {
     let count = 3
     setCountdown(count)
     countdownRef.current = setInterval(() => {
+      if (heldRef.current) return // false start — hold this tick
       count -= 1
       if (count >= 0) { setCountdown(count); playCountdownBeep(count) }
-      if (count < 0) { clearInterval(countdownRef.current!); setRacing() }
+      if (count < 0) {
+        clearInterval(countdownRef.current!)
+        window.electronAPI.raceGo()
+        setRacing()
+      }
     }, 1000)
   }
 
@@ -128,14 +144,29 @@ export function HeadToHead() {
           {' vs '}
           <span className="text-orange-500">{rightRider.name}</span>
         </span>
-        {!isIdle && !isFinished && (
-          <button
-            onClick={handleAbort}
-            className="text-sm text-red-500 hover:text-red-300 border border-red-900 hover:border-red-600 rounded px-3 py-1 uppercase tracking-widest transition-colors"
-          >
-            Abort Race
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => setFalseStartEnabled((v) => !v)}
+              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                falseStartEnabled
+                  ? 'text-yellow-400 border-yellow-700 bg-yellow-950'
+                  : 'text-gray-600 border-gray-700'
+              }`}
+              title="Toggle false-start detection (dev only)"
+            >
+              False Start {falseStartEnabled ? 'ON' : 'OFF'}
+            </button>
+          )}
+          {!isIdle && !isFinished && (
+            <button
+              onClick={handleAbort}
+              className="text-sm text-red-500 hover:text-red-300 border border-red-900 hover:border-red-600 rounded px-3 py-1 uppercase tracking-widest transition-colors"
+            >
+              Abort Race
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Race area */}
@@ -164,7 +195,25 @@ export function HeadToHead() {
         )}
 
         {/* Countdown overlay */}
-        {race?.status === 'countdown' && <Countdown value={race.countdownValue} />}
+        {race?.status === 'countdown' && !countdownHeld && <Countdown value={race.countdownValue} />}
+
+        {/* False-start hold overlay */}
+        {countdownHeld && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
+              <div className="text-gray-300 text-xl">Stop pedaling to resume countdown</div>
+              <div className="flex gap-12 text-2xl font-bold tabular-nums">
+                {leftWatts > WATT_THRESHOLD && (
+                  <span className="text-cyan-400">{leftRider?.name}: {leftWatts}W</span>
+                )}
+                {rightWatts > WATT_THRESHOLD && (
+                  <span className="text-orange-400">{rightRider?.name}: {rightWatts}W</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Winner overlay */}
         {isFinished && (

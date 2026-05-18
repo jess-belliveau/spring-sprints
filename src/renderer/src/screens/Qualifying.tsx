@@ -34,9 +34,18 @@ export function Qualifying() {
   const [showResult, setShowResult] = useState(false)
   const [addName, setAddName] = useState('')
   const [addError, setAddError] = useState('')
+  const [countdownHeld, setCountdownHeld] = useState(false)
+  const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const raceIdRef = useRef<string>('')
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const finishHandledRef = useRef(false)
+  const heldRef = useRef(false)
+
+  const leftWatts = race?.left?.instantWatts ?? 0
+  const WATT_THRESHOLD = 10
+  const shouldHold = falseStartEnabled && race?.status === 'countdown' && leftWatts > WATT_THRESHOLD
+  heldRef.current = shouldHold
+  if (shouldHold !== countdownHeld) setCountdownHeld(shouldHold)
 
   // Sorted leaderboard from completed results
   const sortedResults = [...existingResults].sort((a, b) => {
@@ -75,9 +84,14 @@ export function Qualifying() {
     let count = 3
     setCountdown(count)
     countdownRef.current = setInterval(() => {
+      if (heldRef.current) return // rider is pedaling — hold this tick
       count -= 1
       if (count >= 0) { setCountdown(count); playCountdownBeep(count) }
-      if (count < 0) { clearInterval(countdownRef.current!); setRacing() }
+      if (count < 0) {
+        clearInterval(countdownRef.current!)
+        window.electronAPI.raceGo()
+        setRacing()
+      }
     }, 1000)
   }
 
@@ -144,18 +158,33 @@ export function Qualifying() {
             <div className="text-white text-xl font-bold">{currentRider?.name ?? 'All done'}</div>
           </div>
         </div>
-        {isLive ? (
-          <button
-            onClick={handleAbort}
-            className="text-sm text-red-500 hover:text-red-300 border border-red-900 hover:border-red-600 rounded px-3 py-1 uppercase tracking-widest transition-colors"
-          >
-            Abort Race
-          </button>
-        ) : (
-          <div className="text-gray-500 text-sm">
-            {existingResults.length} / {riders.length} complete
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => setFalseStartEnabled((v) => !v)}
+              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                falseStartEnabled
+                  ? 'text-yellow-400 border-yellow-700 bg-yellow-950'
+                  : 'text-gray-600 border-gray-700'
+              }`}
+              title="Toggle false-start detection (dev only)"
+            >
+              False Start {falseStartEnabled ? 'ON' : 'OFF'}
+            </button>
+          )}
+          {isLive ? (
+            <button
+              onClick={handleAbort}
+              className="text-sm text-red-500 hover:text-red-300 border border-red-900 hover:border-red-600 rounded px-3 py-1 uppercase tracking-widest transition-colors"
+            >
+              Abort Race
+            </button>
+          ) : (
+            <div className="text-gray-500 text-sm">
+              {existingResults.length} / {riders.length} complete
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Body: queue sidebar + race area + leaderboard sidebar */}
@@ -243,8 +272,19 @@ export function Qualifying() {
           )}
 
           {/* Countdown overlay */}
-          {isActive && race!.status === 'countdown' && (
+          {isActive && race!.status === 'countdown' && !countdownHeld && (
             <Countdown value={race!.countdownValue} />
+          )}
+
+          {/* False-start hold overlay */}
+          {countdownHeld && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
+                <div className="text-gray-300 text-xl">Stop pedaling to resume countdown</div>
+                <div className="text-yellow-400 text-2xl font-bold tabular-nums">{leftWatts}W</div>
+              </div>
+            </div>
           )}
 
           {/* Result overlay after finish */}

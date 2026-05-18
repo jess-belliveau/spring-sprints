@@ -64,6 +64,7 @@ export class BluetoothManager extends EventEmitter {
   private currentRaceId: string | null = null
   private targetDistance = 0
   private raceStartTime = 0
+  private countdownActive = false
   private scanning = false
   private nobleReady = false
   private scanPending = false // scan requested before noble was ready
@@ -203,7 +204,8 @@ export class BluetoothManager extends EventEmitter {
   startRaceMonitoring(raceId: string, distanceMetres: number, lanes: Lane[]): void {
     this.currentRaceId = raceId
     this.targetDistance = distanceMetres
-    this.raceStartTime = Date.now()
+    this.raceStartTime = 0     // set properly when raceGo() fires
+    this.countdownActive = true
     this.raceWatchers.clear()
 
     for (const lane of lanes) {
@@ -216,10 +218,30 @@ export class BluetoothManager extends EventEmitter {
         finished: false
       })
     }
+
+    for (const device of this.connectedDevices.values()) {
+      device.onCountdownStart?.()
+    }
+  }
+
+  raceGo(): void {
+    this.countdownActive = false
+    this.raceStartTime = Date.now()
+    // Reset per-lane integration state so countdown pedaling doesn't carry over
+    for (const watcher of this.raceWatchers.values()) {
+      watcher.velocityMs = 0
+      watcher.positionMetres = 0
+      watcher.lastDataTs = 0
+      watcher.watts = []
+    }
+    for (const device of this.connectedDevices.values()) {
+      device.onRaceGo?.()
+    }
   }
 
   stopRaceMonitoring(): void {
     this.currentRaceId = null
+    this.countdownActive = false
     this.raceWatchers.clear()
   }
 
@@ -228,6 +250,24 @@ export class BluetoothManager extends EventEmitter {
     if (!watcher || watcher.finished || !this.currentRaceId) return
 
     const now = Date.now()
+
+    if (this.countdownActive) {
+      // During countdown: report live watts for the false-start check but don't
+      // integrate position or accumulate race watts.
+      const elapsed = this.raceStartTime > 0 ? now - this.raceStartTime : 0
+      if (now - watcher.lastEmitTs >= TELEMETRY_THROTTLE_MS) {
+        watcher.lastEmitTs = now
+        this.send(IPC.RACE_TELEMETRY, {
+          lane,
+          raceId: this.currentRaceId,
+          elapsedMs: elapsed,
+          distanceCovered: 0,
+          instantWatts: data.instantaneousPower,
+          cadenceRpm: Math.round(data.instantaneousCadence * 0.5)
+        })
+      }
+      return
+    }
 
     // Simulate distance from power — trainer-reported distance/speed is not used.
     const targetV = wattsToVelocity(data.instantaneousPower)

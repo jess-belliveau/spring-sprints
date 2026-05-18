@@ -8,6 +8,8 @@ export interface ITrainerDevice extends EventEmitter {
   readonly name: string
   connect(): Promise<void>
   disconnect(): Promise<void>
+  onCountdownStart?(): void
+  onRaceGo?(): void
 }
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports

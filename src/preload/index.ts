@@ -18,6 +18,7 @@ const electronAPI = {
   // ── Race ─────────────────────────────────────────────────────────────────
   startRace: (raceId: string, distanceMetres: number, lanes: Lane[]) =>
     ipcRenderer.invoke(IPC.RACE_START, { raceId, distanceMetres, lanes }),
+  raceGo: () => ipcRenderer.invoke(IPC.RACE_GO),
   stopRace: () => ipcRenderer.invoke(IPC.RACE_STOP),
 
   // ── Event ─────────────────────────────────────────────────────────────────
