@@ -1,4 +1,3 @@
-import Store from 'electron-store'
 import type { EventData } from '../shared/types'
 
 interface StoreSchema {
@@ -6,13 +5,19 @@ interface StoreSchema {
 }
 
 export class AppStore {
-  private store: Store<StoreSchema>
+  // electron-store v9+ is ESM-only; use dynamic import to load it in the CJS main process
+  private constructor(private store: {
+    get(key: 'event', defaultValue: null): EventData | null
+    set(key: 'event', value: EventData | null): void
+  }) {}
 
-  constructor() {
-    this.store = new Store<StoreSchema>({
+  static async create(): Promise<AppStore> {
+    const { default: Store } = await import('electron-store')
+    const store = new Store<StoreSchema>({
       name: 'sprint-series-data',
       defaults: { event: null }
     })
+    return new AppStore(store)
   }
 
   getEvent(): EventData | null {

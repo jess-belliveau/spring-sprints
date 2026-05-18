@@ -4,7 +4,7 @@ import type { Lane, BLEDeviceInfo, LaneResult, TelemetryFrame } from '../../shar
 import { BluetoothDevice, type NoblePeripheral, type ITrainerDevice } from './device'
 import { createDemoDevices, DEMO_DEVICE_IDS } from './demo-device'
 import { IPC } from '../../shared/ipc-channels'
-import { FTMS_SERVICE_UUID, TELEMETRY_THROTTLE_MS } from '../../shared/constants'
+import { TELEMETRY_THROTTLE_MS } from '../../shared/constants'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const noble = require('@abandonware/noble')
@@ -66,6 +66,7 @@ export class BluetoothManager extends EventEmitter {
   private raceStartTime = 0
   private scanning = false
   private nobleReady = false
+  private scanPending = false // scan requested before noble was ready
 
   constructor(getWindow: () => BrowserWindow | null, isDev = false) {
     super()
@@ -80,13 +81,23 @@ export class BluetoothManager extends EventEmitter {
 
     noble.on('stateChange', (state: string) => {
       this.nobleReady = state === 'poweredOn'
+      if (this.nobleReady && this.scanPending) {
+        this.scanPending = false
+        this._startNobleScan()
+      }
     })
 
     noble.on('discover', (peripheral: unknown) => {
-      const p = peripheral as { id: string; advertisement: { localName?: string }; rssi: number }
+      const p = peripheral as {
+        id: string
+        advertisement: { localName?: string; serviceUuids?: string[] }
+        rssi: number
+      }
+      // Skip nameless peripherals — they're almost certainly not trainers
+      if (!p.advertisement?.localName) return
       const info: BLEDeviceInfo = {
         id: p.id,
-        name: p.advertisement?.localName || p.id,
+        name: p.advertisement.localName,
         rssi: p.rssi
       }
       this.scanResults.set(p.id, peripheral)
@@ -102,24 +113,36 @@ export class BluetoothManager extends EventEmitter {
   }
 
   startScan(): void {
+    // Always emit demo devices in dev mode so they appear alongside real hardware
     if (this.isDev) {
       for (const d of this.demoDevices.values()) {
         const info: BLEDeviceInfo = { id: d.id, name: d.name, rssi: -55 }
         this.send(IPC.BLUETOOTH_DEVICE_FOUND, info)
       }
-      return
     }
-    if (!this.nobleReady) {
-      this.send(IPC.BLUETOOTH_DEVICE_ERROR, { lane: null, message: 'Bluetooth not available' })
-      return
-    }
+
     if (this.scanning) return
+
+    if (!this.nobleReady) {
+      // Noble not ready yet — queue the scan; it will start once stateChange fires
+      this.scanPending = true
+      return
+    }
+
+    this._startNobleScan()
+  }
+
+  private _startNobleScan(): void {
     this.scanning = true
     this.scanResults.clear()
-    noble.startScanning([FTMS_SERVICE_UUID], false)
+    // Scan without a service UUID filter — many trainers don't include the FTMS
+    // UUID (0x1826) in their advertisement packet even though they support it.
+    // We filter by device name presence in the discover handler instead.
+    noble.startScanning([], false)
   }
 
   stopScan(): void {
+    this.scanPending = false
     if (!this.scanning) return
     this.scanning = false
     noble.stopScanning()

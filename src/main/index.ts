@@ -44,10 +44,10 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.sprintseries.app')
 
-  appStore = new AppStore()
+  appStore = await AppStore.create()
   bluetoothManager = new BluetoothManager(() => mainWindow, is.dev)
 
   createWindow()

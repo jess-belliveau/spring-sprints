@@ -4,7 +4,7 @@
   "description": "Head-to-head bike trainer sprint competition",
   "main": "./out/main/index.js",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "format": "prettier --write .",
@@ -22,7 +22,7 @@
   "dependencies": {
     "@abandonware/noble": "^1.9.2-26",
     "clsx": "^2.1.1",
-    "electron-store": "^8.2.0",
+    "electron-store": "^11.0.2",
     "framer-motion": "^12.0.0",
     "nanoid": "^5.1.0",
     "react": "^19.0.0",
@@ -36,7 +36,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@electron/rebuild": "^4.0.0",
     "@tailwindcss/vite": "^4.3.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.12.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.2.0",
@@ -69,7 +69,9 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "entitlementsInherit": "build/entitlements.mac.plist",
