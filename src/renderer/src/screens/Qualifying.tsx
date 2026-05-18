@@ -157,8 +157,44 @@ export function Qualifying() {
         )}
       </div>
 
-      {/* Body: race area + leaderboard sidebar */}
+      {/* Body: queue sidebar + race area + leaderboard sidebar */}
       <div className="flex flex-1 overflow-hidden">
+
+        {/* Queue sidebar */}
+        <div className="w-52 border-r border-gray-800 flex flex-col overflow-hidden">
+          <div className="px-4 pt-4 pb-2 text-xs text-gray-500 uppercase tracking-widest">
+            Up Next
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-4">
+            {remaining.length === 0 ? (
+              <p className="text-gray-700 text-xs text-center py-6">All riders done</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {remaining.map((rider, i) => {
+                  const isCurrent = i === 0
+                  return (
+                    <div
+                      key={rider.id}
+                      className={`flex items-center gap-2 rounded px-3 py-2 ${isCurrent ? 'bg-green-950 border border-green-800' : 'bg-gray-900'}`}
+                    >
+                      <span className={`text-xs font-bold w-4 shrink-0 ${isCurrent ? 'text-green-400' : 'text-gray-600'}`}>
+                        {i + 1}
+                      </span>
+                      <span className={`flex-1 text-sm font-medium truncate ${isCurrent ? 'text-white' : 'text-gray-400'}`}>
+                        {rider.name}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-xs text-green-400 uppercase tracking-widest shrink-0">
+                          {isActive ? '▶' : '●'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Race area */}
         <div className="flex-1 relative">

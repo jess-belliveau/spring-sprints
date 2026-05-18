@@ -1,3 +1,4 @@
+import { useEffect, useReducer, useRef } from 'react'
 import type { LiveLaneState } from '@shared/types'
 
 const LEFT_COLOR = '#22d3ee'  // cyan-400
@@ -10,6 +11,10 @@ const CY = SIZE / 2
 const OUTER_R = 224
 const INNER_R = 162
 const STROKE = 36
+
+// Per-frame blend factor: higher = snappier, lower = smoother
+// At 60fps, 0.18 gives ~95% of target in ~1.5s; telemetry arrives at 4Hz
+const ALPHA = 0.18
 
 interface Props {
   left: LiveLaneState | null
@@ -33,14 +38,56 @@ function fmt(ms: number): string {
 }
 
 export function TrackDisplay({ left, right, targetDistance }: Props) {
+  // Target distances from props (written each render, read in RAF loop)
+  const leftTargetRef = useRef(0)
+  const rightTargetRef = useRef(0)
+
+  // Smoothed display positions
+  const leftPosRef = useRef(0)
+  const rightPosRef = useRef(0)
+
+  const rafRef = useRef<number>(0)
+  const [, redraw] = useReducer((n: number) => n + 1, 0)
+
+  // Update targets from props each render
+  const newLeftTarget = left?.distanceCovered ?? 0
+  const newRightTarget = right?.distanceCovered ?? 0
+
+  // Snap to 0 when a new race starts (target dropped significantly below current pos)
+  if (newLeftTarget < leftPosRef.current - 1) leftPosRef.current = 0
+  if (newRightTarget < rightPosRef.current - 1) rightPosRef.current = 0
+
+  leftTargetRef.current = newLeftTarget
+  rightTargetRef.current = newRightTarget
+
+  useEffect(() => {
+    function frame() {
+      const lt = leftTargetRef.current
+      const rt = rightTargetRef.current
+
+      leftPosRef.current += (lt - leftPosRef.current) * ALPHA
+      rightPosRef.current += (rt - rightPosRef.current) * ALPHA
+
+      // Snap to target when close enough to avoid endless tiny updates
+      if (Math.abs(lt - leftPosRef.current) < 0.01) leftPosRef.current = lt
+      if (Math.abs(rt - rightPosRef.current) < 0.01) rightPosRef.current = rt
+
+      redraw()
+      rafRef.current = requestAnimationFrame(frame)
+    }
+
+    rafRef.current = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [])
+
   const hasBoth = left !== null && right !== null
-  const soloR = 194  // slightly larger ring when solo
+  const soloR = 194
 
   const leftR = hasBoth ? INNER_R : soloR
   const rightR = OUTER_R
 
-  const leftPct = (left?.distanceCovered ?? 0) / targetDistance
-  const rightPct = (right?.distanceCovered ?? 0) / targetDistance
+  const leftPct = leftPosRef.current / targetDistance
+  const rightPct = rightPosRef.current / targetDistance
 
   const leftDot = dotXY(leftPct, leftR)
   const rightDot = dotXY(rightPct, rightR)
@@ -122,7 +169,6 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
             strokeLinecap="butt"
             transform={`rotate(-90 ${CX} ${CY})`}
             opacity={rightDim ? 0.4 : 1}
-            style={{ transition: 'stroke-dashoffset 0.1s linear' }}
           />
         )}
 
@@ -138,7 +184,6 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
             strokeLinecap="butt"
             transform={`rotate(-90 ${CX} ${CY})`}
             opacity={leftDim ? 0.4 : 1}
-            style={{ transition: 'stroke-dashoffset 0.1s linear' }}
           />
         )}
 
