@@ -69,14 +69,7 @@
       "**/node_modules/@abandonware/**"
     ],
     "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
-        }
-      ],
+      "target": ["dmg"],
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "Sprint Series needs Bluetooth to connect to bike trainers."

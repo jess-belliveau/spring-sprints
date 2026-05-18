@@ -36,11 +36,13 @@ jobs:
           node-version: 24
           cache: npm
 
-      # npm ci runs postinstall which calls electron-rebuild for @abandonware/noble
       - name: Install dependencies
-        run: npm ci
-        env:
-          npm_config_arch: ${{ matrix.electron_arch }}
+        run: npm ci --ignore-scripts
+
+      # Rebuild @abandonware/noble for the correct Electron ABI + target arch.
+      # Must run AFTER npm ci so the postinstall skip doesn't leave noble unbuilt.
+      - name: Rebuild native modules
+        run: npx electron-builder install-app-deps --arch ${{ matrix.electron_arch }}
 
       - name: Build renderer + main
         run: npx electron-vite build
