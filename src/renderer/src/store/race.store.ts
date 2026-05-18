@@ -61,7 +61,9 @@ export const useRaceStore = create<RaceState>((set) => ({
 
   applyTelemetry: (frame) =>
     set((s) => {
-      if (!s.race || s.race.status !== 'racing') return s
+      if (!s.race) return s
+      const { status } = s.race
+      if (status !== 'racing' && status !== 'countdown') return s
       const lane = frame.lane
       const existing = s.race[lane]
       if (!existing || existing.finished) return s
@@ -70,6 +72,8 @@ export const useRaceStore = create<RaceState>((set) => ({
           ...s.race,
           [lane]: {
             ...existing,
+            // During countdown the main process sends distanceCovered=0; honour it
+            // so position never advances before GO fires.
             distanceCovered: frame.distanceCovered,
             instantWatts: frame.instantWatts,
             cadenceRpm: frame.cadenceRpm,
