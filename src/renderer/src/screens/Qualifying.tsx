@@ -7,7 +7,7 @@ import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
 import { BRACKET_SIZE } from '@shared/constants'
 import { WattBomber } from '../components/WattBomber'
-import type { RaceResult } from '@shared/types'
+import type { RaceResult, LaneResult } from '@shared/types'
 
 export function Qualifying() {
   const riders = useEventStore(selectRiders)
@@ -18,7 +18,8 @@ export function Qualifying() {
   const addRider = useEventStore((s) => s.addRider)
   const setPhase = useEventStore((s) => s.setPhase)
 
-  const race = useRaceStore((s) => s.race)
+  const raceStatus = useRaceStore((s) => s.race?.status ?? null)
+  const countdownValue = useRaceStore((s) => s.race?.countdownValue ?? 0)
   const initRace = useRaceStore((s) => s.initRace)
   const setCountdown = useRaceStore((s) => s.setCountdown)
   const setRacing = useRaceStore((s) => s.setRacing)
@@ -32,6 +33,7 @@ export function Qualifying() {
   const currentRider = remaining[0] ?? null
 
   const [showResult, setShowResult] = useState(false)
+  const [finishResult, setFinishResult] = useState<LaneResult | null>(null)
   const [addName, setAddName] = useState('')
   const [addError, setAddError] = useState('')
   const [countdownHeld, setCountdownHeld] = useState(false)
@@ -40,12 +42,10 @@ export function Qualifying() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const finishHandledRef = useRef(false)
   const heldRef = useRef(false)
-
-  const leftWatts = race?.left?.instantWatts ?? 0
+  const falseStartEnabledRef = useRef(falseStartEnabled)
+  falseStartEnabledRef.current = falseStartEnabled
+  const wattsHoldRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
-  const shouldHold = falseStartEnabled && race?.status === 'countdown' && leftWatts > WATT_THRESHOLD
-  heldRef.current = shouldHold
-  if (shouldHold !== countdownHeld) setCountdownHeld(shouldHold)
 
   // Sorted leaderboard from completed results
   const sortedResults = [...existingResults].sort((a, b) => {
@@ -54,20 +54,34 @@ export function Qualifying() {
     return aTime - bTime
   })
 
+  // Non-reactive: false-start detection + watts display — avoids 10Hz re-renders
   useEffect(() => {
-    if (race?.status === 'finished' && !finishHandledRef.current) {
+    return useRaceStore.subscribe((state) => {
+      const watts = state.race?.left?.instantWatts ?? 0
+      const isCountdown = state.race?.status === 'countdown'
+      const shouldHold = falseStartEnabledRef.current && isCountdown && watts > WATT_THRESHOLD
+      heldRef.current = shouldHold
+      if (wattsHoldRef.current) wattsHoldRef.current.textContent = String(watts)
+      setCountdownHeld((prev) => (prev === shouldHold ? prev : shouldHold))
+    })
+  }, [])
+
+  useEffect(() => {
+    if (raceStatus === 'finished' && !finishHandledRef.current) {
       finishHandledRef.current = true
       playFinishFanfare()
       setShowResult(true)
       window.electronAPI.stopRace()
     }
-  }, [race?.status, playFinishFanfare])
+  }, [raceStatus, playFinishFanfare])
 
   useEffect(() => {
     const unsub = window.electronAPI.onRaceFinished(({ lane, result }) => {
       if (lane !== 'left') return
       if (!currentRider) return
-      setLaneFinished('left', { ...result, riderId: currentRider.id })
+      const laneResult = { ...result, riderId: currentRider.id }
+      setLaneFinished('left', laneResult)
+      setFinishResult(laneResult)
     })
     return unsub
   }, [currentRider, setLaneFinished])
@@ -96,17 +110,17 @@ export function Qualifying() {
   }
 
   function saveAndAdvance() {
-    const laneResult = race?.left?.result
-    if (!laneResult || !currentRider) return
+    if (!finishResult || !currentRider) return
     const raceResult: RaceResult = {
       raceId: raceIdRef.current,
       type: 'qualifying',
       startedAt: Date.now(),
-      left: laneResult,
+      left: finishResult,
       right: null
     }
     addQualifyingResult(raceResult)
     resetRace()
+    setFinishResult(null)
     setShowResult(false)
     finishHandledRef.current = false
   }
@@ -131,14 +145,15 @@ export function Qualifying() {
     finishHandledRef.current = false
     window.electronAPI.stopRace()
     resetRace()
+    setFinishResult(null)
     setShowResult(false)
   }
 
   useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current) }, [])
 
-  const isIdle = !race || race.status === 'idle'
-  const isActive = race !== null && race.status !== 'idle'
-  const isLive = race?.status === 'countdown' || race?.status === 'racing'
+  const isIdle = raceStatus === null || raceStatus === 'idle'
+  const isActive = raceStatus !== null && raceStatus !== 'idle'
+  const isLive = raceStatus === 'countdown' || raceStatus === 'racing'
 
   return (
     <div className="flex flex-col h-full">
@@ -264,7 +279,7 @@ export function Qualifying() {
           {isActive && (
             <div className="absolute inset-0 flex">
               <TrackDisplay
-                left={race!.left}
+                left={currentRider ? { riderName: currentRider.name } : null}
                 right={null}
                 targetDistance={config.distanceMetres}
               />
@@ -272,8 +287,8 @@ export function Qualifying() {
           )}
 
           {/* Countdown overlay */}
-          {isActive && race!.status === 'countdown' && !countdownHeld && (
-            <Countdown value={race!.countdownValue} />
+          {isActive && raceStatus === 'countdown' && !countdownHeld && (
+            <Countdown value={countdownValue} />
           )}
 
           {/* False-start hold overlay */}
@@ -282,24 +297,24 @@ export function Qualifying() {
               <div className="flex flex-col items-center gap-3">
                 <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
                 <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
-                <div className="text-[var(--accent)] text-2xl font-bold tabular-nums">{leftWatts}W</div>
+                <div className="text-[var(--accent)] text-2xl font-bold tabular-nums"><span ref={wattsHoldRef}>0</span>W</div>
               </div>
             </div>
           )}
 
           {/* Result overlay after finish */}
-          {showResult && race?.left?.result && (
+          {showResult && finishResult && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
               <div className="flex flex-col items-center gap-6">
                 <div className="text-green-400 text-4xl font-bold uppercase tracking-widest">
                   Finished!
                 </div>
                 <div className="text-8xl font-black text-white tabular-nums">
-                  {formatTime(race.left.result.finishTimeMs)}
+                  {formatTime(finishResult.finishTimeMs)}
                 </div>
                 <div className="flex gap-8 text-xl text-stone-400">
-                  <span>Avg: <strong className="text-[var(--accent)]">{race.left.result.avgWatts}W</strong></span>
-                  <span>Max: <strong className="text-amber-300">{race.left.result.maxWatts}W</strong></span>
+                  <span>Avg: <strong className="text-[var(--accent)]">{finishResult.avgWatts}W</strong></span>
+                  <span>Max: <strong className="text-amber-300">{finishResult.maxWatts}W</strong></span>
                 </div>
                 <button
                   onClick={saveAndAdvance}

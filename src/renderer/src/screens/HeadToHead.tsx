@@ -15,7 +15,8 @@ export function HeadToHead() {
   const advanceBracket = useEventStore((s) => s.advanceBracket)
   const setPhase = useEventStore((s) => s.setPhase)
 
-  const race = useRaceStore((s) => s.race)
+  const raceStatus = useRaceStore((s) => s.race?.status ?? null)
+  const countdownValue = useRaceStore((s) => s.race?.countdownValue ?? 0)
   const initRace = useRaceStore((s) => s.initRace)
   const setCountdown = useRaceStore((s) => s.setCountdown)
   const setRacing = useRaceStore((s) => s.setRacing)
@@ -30,18 +31,33 @@ export function HeadToHead() {
   const heldRef = useRef(false)
   const [countdownHeld, setCountdownHeld] = useState(false)
   const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
-
+  const falseStartEnabledRef = useRef(falseStartEnabled)
+  falseStartEnabledRef.current = falseStartEnabled
+  const leftWattsSpanRef = useRef<HTMLSpanElement>(null)
+  const rightWattsSpanRef = useRef<HTMLSpanElement>(null)
+  const leftWattsValRef = useRef<HTMLSpanElement>(null)
+  const rightWattsValRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
-  const leftWatts = race?.left?.instantWatts ?? 0
-  const rightWatts = race?.right?.instantWatts ?? 0
-  const shouldHold = falseStartEnabled && race?.status === 'countdown' &&
-    (leftWatts > WATT_THRESHOLD || rightWatts > WATT_THRESHOLD)
-  heldRef.current = shouldHold
-  if (shouldHold !== countdownHeld) setCountdownHeld(shouldHold)
 
   const currentMatch = bracket.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null
   const leftRider = riders.find((r) => r.id === currentMatch?.topRiderId)
   const rightRider = riders.find((r) => r.id === currentMatch?.bottomRiderId)
+
+  // Non-reactive: false-start detection + hold overlay watts — avoids 10Hz re-renders
+  useEffect(() => {
+    return useRaceStore.subscribe((state) => {
+      const lw = state.race?.left?.instantWatts ?? 0
+      const rw = state.race?.right?.instantWatts ?? 0
+      const isCountdown = state.race?.status === 'countdown'
+      const shouldHold = falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
+      heldRef.current = shouldHold
+      if (leftWattsSpanRef.current) leftWattsSpanRef.current.style.display = lw > WATT_THRESHOLD ? '' : 'none'
+      if (rightWattsSpanRef.current) rightWattsSpanRef.current.style.display = rw > WATT_THRESHOLD ? '' : 'none'
+      if (leftWattsValRef.current) leftWattsValRef.current.textContent = String(lw)
+      if (rightWattsValRef.current) rightWattsValRef.current.textContent = String(rw)
+      setCountdownHeld((prev) => (prev === shouldHold ? prev : shouldHold))
+    })
+  }, [])
 
   useEffect(() => {
     const unsub = window.electronAPI.onRaceFinished(({ lane, result }) => {
@@ -58,7 +74,7 @@ export function HeadToHead() {
   }, [leftRider, rightRider, setLaneFinished, playFinishFanfare])
 
   useEffect(() => {
-    if (race?.status !== 'finished') return
+    if (raceStatus !== 'finished') return
     window.electronAPI.stopRace()
 
     const left = resultsRef.current['left'] ?? null
@@ -70,7 +86,7 @@ export function HeadToHead() {
     if (currentMatch && winnerId) {
       advanceBracket(currentMatch.id, winnerId, internalRaceIdRef.current)
     }
-  }, [race?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [raceStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startRace() {
     if (!leftRider || !rightRider) return
@@ -126,8 +142,8 @@ export function HeadToHead() {
     )
   }
 
-  const isIdle = !race || race.status === 'idle'
-  const isFinished = race?.status === 'finished'
+  const isIdle = raceStatus === null || raceStatus === 'idle'
+  const isFinished = raceStatus === 'finished'
 
   const leftTime = resultsRef.current['left']?.finishTimeMs ?? Infinity
   const rightTime = resultsRef.current['right']?.finishTimeMs ?? Infinity
@@ -172,11 +188,11 @@ export function HeadToHead() {
       {/* Race area */}
       <div className="flex-1 relative">
         {/* Track — shown once race has started */}
-        {race && (
+        {raceStatus !== null && (
           <div className="absolute inset-0 flex">
             <TrackDisplay
-              left={race.left}
-              right={race.right}
+              left={leftRider ? { riderName: leftRider.name } : null}
+              right={rightRider ? { riderName: rightRider.name } : null}
               targetDistance={config.distanceMetres}
             />
           </div>
@@ -195,7 +211,7 @@ export function HeadToHead() {
         )}
 
         {/* Countdown overlay */}
-        {race?.status === 'countdown' && !countdownHeld && <Countdown value={race.countdownValue} />}
+        {raceStatus === 'countdown' && !countdownHeld && <Countdown value={countdownValue} />}
 
         {/* False-start hold overlay */}
         {countdownHeld && (
@@ -204,12 +220,12 @@ export function HeadToHead() {
               <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
               <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
               <div className="flex gap-12 text-2xl font-bold tabular-nums">
-                {leftWatts > WATT_THRESHOLD && (
-                  <span className="text-[var(--lane-left)]">{leftRider?.name}: {leftWatts}W</span>
-                )}
-                {rightWatts > WATT_THRESHOLD && (
-                  <span className="text-[var(--lane-right)]">{rightRider?.name}: {rightWatts}W</span>
-                )}
+                <span ref={leftWattsSpanRef} style={{ display: 'none' }} className="text-[var(--lane-left)]">
+                  {leftRider?.name}: <span ref={leftWattsValRef}>0</span>W
+                </span>
+                <span ref={rightWattsSpanRef} style={{ display: 'none' }} className="text-[var(--lane-right)]">
+                  {rightRider?.name}: <span ref={rightWattsValRef}>0</span>W
+                </span>
               </div>
             </div>
           </div>
