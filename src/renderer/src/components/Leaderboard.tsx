@@ -31,9 +31,9 @@ export function Leaderboard({ rows, advanceCount, onRetry }: Props) {
           return (
             <div
               key={rider.id}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${advances ? 'bg-green-950 border border-green-800' : 'bg-gray-900'}`}
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${advances ? 'bg-green-950 border border-green-800' : 'bg-stone-900'}`}
             >
-              <span className={`text-2xl font-bold w-8 shrink-0 ${advances ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className={`text-2xl font-bold w-8 shrink-0 ${advances ? 'text-green-400' : 'text-stone-500'}`}>
                 {seed}
               </span>
 
@@ -46,12 +46,12 @@ export function Leaderboard({ rows, advanceCount, onRetry }: Props) {
                 )}
               </span>
 
-              <span className="text-xl font-mono font-bold text-yellow-400 shrink-0">
+              <span className="text-xl font-mono font-bold text-[var(--accent)] shrink-0">
                 {laneResult ? formatTime(laneResult.finishTimeMs) : '—'}
               </span>
 
               {advances ? (
-                <span className="text-gray-500 text-sm shrink-0 w-28 text-right">
+                <span className="text-stone-500 text-sm shrink-0 w-28 text-right">
                   {laneResult ? `${laneResult.avgWatts}W / ${laneResult.maxWatts}W` : ''}
                 </span>
               ) : (
@@ -59,7 +59,7 @@ export function Leaderboard({ rows, advanceCount, onRetry }: Props) {
                   {canRetry && (
                     <button
                       onClick={() => onRetry!(rider.id)}
-                      className="text-sm text-orange-400 hover:text-orange-300 border border-orange-700 hover:border-orange-500 rounded px-3 py-1 transition-colors"
+                      className="text-sm text-stone-400 hover:text-white border border-stone-700 hover:border-stone-500 rounded px-3 py-1 transition-colors"
                     >
                       ↺ Retry
                     </button>

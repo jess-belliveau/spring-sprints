@@ -45,7 +45,6 @@ function computePlaces(bracket: BracketRound[]): Map<string, number> {
 function buildCsv(riders: Rider[], qualifyingResults: RaceResult[], bracket: BracketRound[]): string {
   const places = computePlaces(bracket)
 
-  // Map riderId → qualifying lane result
   const qualMap = new Map<string, LaneResult>(
     qualifyingResults.flatMap((r) => {
       const lane = r.left ?? r.right
@@ -53,7 +52,6 @@ function buildCsv(riders: Rider[], qualifyingResults: RaceResult[], bracket: Bra
     })
   )
 
-  // Sort riders: bracket participants by place, then non-bracket by qualifying seed
   const bracketRiderIds = new Set(places.keys())
   const nonBracket = riders
     .filter((r) => !bracketRiderIds.has(r.id) && qualMap.has(r.id))
@@ -109,7 +107,7 @@ export function FinalResults() {
 
       {champion && (
         <div className="flex flex-col items-center gap-2 py-8">
-          <div className="text-yellow-400 text-2xl uppercase tracking-widest">Champion</div>
+          <div className="text-amber-400 text-2xl uppercase tracking-widest">Champion</div>
           <div className="text-8xl font-black text-white">{champion.name}</div>
         </div>
       )}
@@ -117,7 +115,7 @@ export function FinalResults() {
       <div className="flex-1 scrollable w-full max-w-2xl">
         {bracket.map((round) => (
           <div key={round.round} className="mb-6">
-            <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">
+            <div className="text-xs text-stone-500 uppercase tracking-widest mb-2">
               {['Quarter-Finals', 'Semi-Finals', 'Final'][round.round] ?? `Round ${round.round + 1}`}
             </div>
             {round.matches.map((match) => {
@@ -129,7 +127,7 @@ export function FinalResults() {
                     <div
                       key={i}
                       className={`flex-1 flex justify-between items-center px-4 py-2 rounded-lg ${
-                        rider?.id === match.winnerId ? 'bg-green-950 text-green-400' : 'bg-gray-900 text-gray-400'
+                        rider?.id === match.winnerId ? 'bg-green-950 text-green-400' : 'bg-stone-900 text-stone-400'
                       }`}
                     >
                       <span className="font-medium">{rider?.name ?? 'TBD'}</span>
@@ -148,13 +146,13 @@ export function FinalResults() {
       <div className="flex gap-4 mb-8">
         <button
           onClick={handleExport}
-          className="py-3 px-10 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-lg font-medium tracking-widest uppercase transition-colors"
+          className="py-3 px-10 rounded-lg bg-stone-700 hover:bg-stone-600 text-white text-lg font-medium tracking-widest uppercase transition-colors"
         >
           Export CSV
         </button>
         <button
           onClick={reset}
-          className="py-3 px-10 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white text-lg font-medium tracking-widest uppercase transition-colors"
+          className="py-3 px-10 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 text-lg font-medium tracking-widest uppercase transition-colors"
         >
           New Event
         </button>

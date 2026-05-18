@@ -24,16 +24,16 @@ export function WattBomber({ results, riders, limit = 3 }: Props) {
   return (
     <div className="flex flex-col gap-1">
       {ranked.length === 0 ? (
-        <p className="text-gray-700 text-xs text-center py-4">No data yet</p>
+        <p className="text-stone-700 text-xs text-center py-4">No data yet</p>
       ) : (
         ranked.map(({ rider, maxWatts }, i) => (
           <div
             key={rider.id}
-            className="flex items-center gap-2 rounded px-3 py-2 bg-gray-900"
+            className="flex items-center gap-2 rounded px-3 py-2 bg-stone-900"
           >
             <span className="text-base w-5 shrink-0 text-center">{MEDALS[i] ?? i + 1}</span>
             <span className="flex-1 text-sm font-medium text-white truncate">{rider.name}</span>
-            <span className="text-sm font-mono font-bold text-orange-400 shrink-0">
+            <span className="text-sm font-mono font-bold text-[var(--accent)] shrink-0">
               {maxWatts}W
             </span>
           </div>

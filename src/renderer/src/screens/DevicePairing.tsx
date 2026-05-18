@@ -44,7 +44,7 @@ export function DevicePairing() {
       <div className="flex items-center">
         <button
           onClick={() => { window.electronAPI.scanStop(); setPhase('registration') }}
-          className="text-gray-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
+          className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
         >
           ← Riders
         </button>
@@ -64,11 +64,11 @@ export function DevicePairing() {
                 conn?.status === 'connected'
                   ? 'border-green-500 bg-green-950'
                   : conn?.status === 'connecting'
-                    ? 'border-yellow-500 bg-yellow-950'
-                    : 'border-gray-700 bg-gray-900'
+                    ? 'border-amber-500 bg-amber-950/40'
+                    : 'border-stone-700 bg-stone-900'
               }`}
             >
-              <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">
+              <div className="text-xs text-stone-500 uppercase tracking-widest mb-1">
                 {lane} lane
               </div>
               <div className="text-white font-medium">
@@ -85,11 +85,11 @@ export function DevicePairing() {
 
       {/* Scanned devices */}
       <div className="flex-1 scrollable flex flex-col gap-2">
-        <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">
+        <div className="text-xs text-stone-500 uppercase tracking-widest mb-2">
           Scanning for FTMS devices…
         </div>
         {scannedDevices.length === 0 && (
-          <div className="text-gray-600 text-center py-8">
+          <div className="text-stone-600 text-center py-8">
             No devices found. Make sure trainers are powered on.
           </div>
         )}
@@ -110,14 +110,14 @@ export function DevicePairing() {
 
       <div className="flex flex-col gap-2 mb-8">
         {leftConnected && !rightConnected && (
-          <p className="text-yellow-500 text-sm text-center">
+          <p className="text-amber-500 text-sm text-center">
             Right lane needed for bracket races — connect it before qualifying ends
           </p>
         )}
         <button
           disabled={!leftConnected}
           onClick={() => setPhase('qualifying')}
-          className="w-full py-4 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white text-xl font-bold tracking-widest uppercase transition-colors"
+          className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors"
         >
           Begin Qualifying →
         </button>

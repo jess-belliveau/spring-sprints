@@ -21,7 +21,7 @@ export function Countdown({ value }: Props) {
           <div
             className={
               label === 'GO!'
-                ? 'text-green-400 text-[16rem] font-black'
+                ? 'text-[var(--accent)] text-[16rem] font-black'
                 : 'text-white text-[20rem] font-black drop-shadow-2xl'
             }
             style={{ textShadow: '0 0 80px rgba(255,255,255,0.3)' }}

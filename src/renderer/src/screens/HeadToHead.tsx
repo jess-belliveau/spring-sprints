@@ -120,7 +120,7 @@ export function HeadToHead() {
 
   if (!currentMatch || !leftRider || !rightRider) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-stone-400">
         No match configured
       </div>
     )
@@ -136,13 +136,13 @@ export function HeadToHead() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800">
-        <span className="text-xs text-gray-500 uppercase tracking-widest">
+      <div className="flex justify-between items-center px-8 py-4 border-b border-stone-800">
+        <span className="text-xs text-stone-500 uppercase tracking-widest">
           Round {currentMatch.round + 1} · Match {currentMatch.matchIndex + 1}
           {' — '}
-          <span className="text-cyan-400">{leftRider.name}</span>
+          <span className="text-[var(--lane-left)]">{leftRider.name}</span>
           {' vs '}
-          <span className="text-orange-500">{rightRider.name}</span>
+          <span className="text-[var(--lane-right)]">{rightRider.name}</span>
         </span>
         <div className="flex items-center gap-3">
           {import.meta.env.DEV && (
@@ -150,8 +150,8 @@ export function HeadToHead() {
               onClick={() => setFalseStartEnabled((v) => !v)}
               className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
                 falseStartEnabled
-                  ? 'text-yellow-400 border-yellow-700 bg-yellow-950'
-                  : 'text-gray-600 border-gray-700'
+                  ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                  : 'text-stone-600 border-stone-700'
               }`}
               title="Toggle false-start detection (dev only)"
             >
@@ -187,7 +187,7 @@ export function HeadToHead() {
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <button
               onClick={startRace}
-              className="px-16 py-6 bg-green-600 hover:bg-green-500 text-white text-3xl font-bold tracking-widest uppercase rounded-xl transition-colors shadow-2xl"
+              className="px-16 py-6 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-3xl font-bold tracking-widest uppercase rounded-xl transition-colors shadow-2xl"
             >
               START RACE
             </button>
@@ -202,13 +202,13 @@ export function HeadToHead() {
           <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
             <div className="flex flex-col items-center gap-4">
               <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
-              <div className="text-gray-300 text-xl">Stop pedaling to resume countdown</div>
+              <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
               <div className="flex gap-12 text-2xl font-bold tabular-nums">
                 {leftWatts > WATT_THRESHOLD && (
-                  <span className="text-cyan-400">{leftRider?.name}: {leftWatts}W</span>
+                  <span className="text-[var(--lane-left)]">{leftRider?.name}: {leftWatts}W</span>
                 )}
                 {rightWatts > WATT_THRESHOLD && (
-                  <span className="text-orange-400">{rightRider?.name}: {rightWatts}W</span>
+                  <span className="text-[var(--lane-right)]">{rightRider?.name}: {rightWatts}W</span>
                 )}
               </div>
             </div>
@@ -219,12 +219,12 @@ export function HeadToHead() {
         {isFinished && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
             <div className="flex flex-col items-center gap-6">
-              <div className="text-yellow-400 text-6xl font-black uppercase tracking-widest">
+              <div className="text-[var(--accent)] text-6xl font-black uppercase tracking-widest">
                 {winnerName} Wins!
               </div>
               <button
                 onClick={handleBackToBracket}
-                className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white text-xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase rounded-lg transition-colors"
               >
                 Back to Bracket →
               </button>

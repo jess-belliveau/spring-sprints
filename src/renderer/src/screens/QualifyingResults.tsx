@@ -34,7 +34,7 @@ export function QualifyingResults() {
       <div className="flex items-center">
         <button
           onClick={() => setPhase('registration')}
-          className="text-gray-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
+          className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
         >
           ← Riders
         </button>
@@ -56,14 +56,14 @@ export function QualifyingResults() {
         </div>
 
         <div className="w-56 shrink-0 flex flex-col gap-3">
-          <div className="text-xs text-gray-500 uppercase tracking-widest">Watt Bomber</div>
+          <div className="text-xs text-stone-500 uppercase tracking-widest">Watt Bomber</div>
           <WattBomber results={results} riders={riders} limit={3} />
         </div>
       </div>
 
       <button
         onClick={generateBracket}
-        className="w-full py-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xl font-bold tracking-widest uppercase transition-colors mb-8"
+        className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors mb-8"
       >
         Generate Bracket →
       </button>

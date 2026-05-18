@@ -143,18 +143,18 @@ export function Qualifying() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800">
+      <div className="flex justify-between items-center px-8 py-4 border-b border-stone-800">
         <div className="flex items-center gap-6">
           {isIdle && !showResult && (
             <button
               onClick={() => setPhase('registration')}
-              className="text-gray-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
+              className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
             >
               ← Riders
             </button>
           )}
           <div>
-            <div className="text-xs text-gray-500 uppercase tracking-widest">Qualifying</div>
+            <div className="text-xs text-stone-500 uppercase tracking-widest">Qualifying</div>
             <div className="text-white text-xl font-bold">{currentRider?.name ?? 'All done'}</div>
           </div>
         </div>
@@ -164,8 +164,8 @@ export function Qualifying() {
               onClick={() => setFalseStartEnabled((v) => !v)}
               className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
                 falseStartEnabled
-                  ? 'text-yellow-400 border-yellow-700 bg-yellow-950'
-                  : 'text-gray-600 border-gray-700'
+                  ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                  : 'text-stone-600 border-stone-700'
               }`}
               title="Toggle false-start detection (dev only)"
             >
@@ -180,7 +180,7 @@ export function Qualifying() {
               Abort Race
             </button>
           ) : (
-            <div className="text-gray-500 text-sm">
+            <div className="text-stone-500 text-sm">
               {existingResults.length} / {riders.length} complete
             </div>
           )}
@@ -191,13 +191,13 @@ export function Qualifying() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Queue sidebar */}
-        <div className="w-52 border-r border-gray-800 flex flex-col overflow-hidden">
-          <div className="px-4 pt-4 pb-2 text-xs text-gray-500 uppercase tracking-widest">
+        <div className="w-52 border-r border-stone-800 flex flex-col overflow-hidden">
+          <div className="px-4 pt-4 pb-2 text-xs text-stone-500 uppercase tracking-widest">
             Up Next
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-4">
             {remaining.length === 0 ? (
-              <p className="text-gray-700 text-xs text-center py-6">All riders done</p>
+              <p className="text-stone-700 text-xs text-center py-6">All riders done</p>
             ) : (
               <div className="flex flex-col gap-1">
                 {remaining.map((rider, i) => {
@@ -205,16 +205,16 @@ export function Qualifying() {
                   return (
                     <div
                       key={rider.id}
-                      className={`flex items-center gap-2 rounded px-3 py-2 ${isCurrent ? 'bg-green-950 border border-green-800' : 'bg-gray-900'}`}
+                      className={`flex items-center gap-2 rounded px-3 py-2 border ${isCurrent ? 'accent-tint' : 'bg-stone-900 border-transparent'}`}
                     >
-                      <span className={`text-xs font-bold w-4 shrink-0 ${isCurrent ? 'text-green-400' : 'text-gray-600'}`}>
+                      <span className={`text-xs font-bold w-4 shrink-0 ${isCurrent ? 'text-[var(--accent)]' : 'text-stone-600'}`}>
                         {i + 1}
                       </span>
-                      <span className={`flex-1 text-sm font-medium truncate ${isCurrent ? 'text-white' : 'text-gray-400'}`}>
+                      <span className={`flex-1 text-sm font-medium truncate ${isCurrent ? 'text-white' : 'text-stone-400'}`}>
                         {rider.name}
                       </span>
                       {isCurrent && (
-                        <span className="text-xs text-green-400 uppercase tracking-widest shrink-0">
+                        <span className="text-xs text-[var(--accent)] uppercase tracking-widest shrink-0">
                           {isActive ? '▶' : '●'}
                         </span>
                       )}
@@ -233,11 +233,11 @@ export function Qualifying() {
           {isIdle && !showResult && currentRider && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-6">
-                <div className="text-gray-400 text-2xl">Ready to race?</div>
+                <div className="text-stone-400 text-2xl">Ready to race?</div>
                 <div className="text-5xl font-black text-white">{currentRider.name}</div>
                 <button
                   onClick={startRace}
-                  className="px-12 py-4 bg-green-600 hover:bg-green-500 text-white text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   START RACE
                 </button>
@@ -252,7 +252,7 @@ export function Qualifying() {
                 <div className="text-green-400 text-2xl font-bold uppercase tracking-widest">All riders done!</div>
                 <button
                   onClick={() => setPhase('qualifying-results')}
-                  className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   See Results →
                 </button>
@@ -281,8 +281,8 @@ export function Qualifying() {
             <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
               <div className="flex flex-col items-center gap-3">
                 <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
-                <div className="text-gray-300 text-xl">Stop pedaling to resume countdown</div>
-                <div className="text-yellow-400 text-2xl font-bold tabular-nums">{leftWatts}W</div>
+                <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
+                <div className="text-[var(--accent)] text-2xl font-bold tabular-nums">{leftWatts}W</div>
               </div>
             </div>
           )}
@@ -297,13 +297,13 @@ export function Qualifying() {
                 <div className="text-8xl font-black text-white tabular-nums">
                   {formatTime(race.left.result.finishTimeMs)}
                 </div>
-                <div className="flex gap-8 text-xl text-gray-400">
-                  <span>Avg: <strong className="text-yellow-400">{race.left.result.avgWatts}W</strong></span>
-                  <span>Max: <strong className="text-orange-400">{race.left.result.maxWatts}W</strong></span>
+                <div className="flex gap-8 text-xl text-stone-400">
+                  <span>Avg: <strong className="text-[var(--accent)]">{race.left.result.avgWatts}W</strong></span>
+                  <span>Max: <strong className="text-amber-300">{race.left.result.maxWatts}W</strong></span>
                 </div>
                 <button
                   onClick={saveAndAdvance}
-                  className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   {remaining.length <= 1 ? 'See Results →' : 'Next Rider →'}
                 </button>
@@ -313,15 +313,15 @@ export function Qualifying() {
         </div>
 
         {/* Leaderboard sidebar */}
-        <div className="w-64 border-l border-gray-800 flex flex-col overflow-hidden">
+        <div className="w-64 border-l border-stone-800 flex flex-col overflow-hidden">
           {/* Time leaderboard */}
-          <div className="px-4 pt-4 pb-2 text-xs text-gray-500 uppercase tracking-widest flex justify-between">
+          <div className="px-4 pt-4 pb-2 text-xs text-stone-500 uppercase tracking-widest flex justify-between">
             <span>Leaderboard</span>
             <span>{sortedResults.length}/{riders.length}</span>
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-2">
             {sortedResults.length === 0 ? (
-              <p className="text-gray-700 text-xs text-center py-6">No times yet</p>
+              <p className="text-stone-700 text-xs text-center py-6">No times yet</p>
             ) : (
               <div className="flex flex-col gap-1">
                 {sortedResults.map((result, i) => {
@@ -332,23 +332,23 @@ export function Qualifying() {
                   return (
                     <div
                       key={result.raceId}
-                      className={`flex items-center gap-2 rounded px-2 py-2 ${advances ? 'bg-green-950' : 'bg-gray-900'}`}
+                      className={`flex items-center gap-2 rounded px-2 py-2 ${advances ? 'bg-green-950' : 'bg-stone-900'}`}
                     >
-                      <span className={`text-sm font-bold w-5 text-right shrink-0 ${advances ? 'text-green-400' : 'text-gray-600'}`}>
+                      <span className={`text-sm font-bold w-5 text-right shrink-0 ${advances ? 'text-green-400' : 'text-stone-600'}`}>
                         {i + 1}
                       </span>
                       <span className="flex-1 text-white text-sm font-medium truncate">
                         {rider?.name ?? '?'}
                       </span>
                       {advances ? (
-                        <span className="text-yellow-400 text-sm font-mono tabular-nums shrink-0">
+                        <span className="text-[var(--accent)] text-sm font-mono tabular-nums shrink-0">
                           {laneResult ? formatTime(laneResult.finishTimeMs) : '—'}
                         </span>
                       ) : (
                         <button
                           onClick={() => removeQualifyingResult(riderId)}
                           disabled={!isIdle || showResult}
-                          className="text-xs text-orange-400 hover:text-orange-300 border border-orange-700 hover:border-orange-500 rounded px-2 py-0.5 disabled:opacity-30 transition-colors shrink-0"
+                          className="text-xs text-stone-400 hover:text-white border border-stone-700 hover:border-stone-500 rounded px-2 py-0.5 disabled:opacity-30 transition-colors shrink-0"
                           title={formatTime(laneResult?.finishTimeMs ?? 0)}
                         >
                           ↺
@@ -362,8 +362,8 @@ export function Qualifying() {
           </div>
 
           {/* Watt Bomber section */}
-          <div className="border-t border-gray-800 px-4 pt-3 pb-2">
-            <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">Watt Bomber</div>
+          <div className="border-t border-stone-800 px-4 pt-3 pb-2">
+            <div className="text-xs text-stone-500 uppercase tracking-widest mb-2">Watt Bomber</div>
             <WattBomber results={existingResults} riders={riders} limit={3} />
           </div>
         </div>
@@ -371,9 +371,9 @@ export function Qualifying() {
 
       {/* Late arrival panel — hidden while racing */}
       {isIdle && !showResult && (
-        <div className="border-t border-gray-800 px-8 py-4">
+        <div className="border-t border-stone-800 px-8 py-4">
           <div className="flex items-center gap-3 w-full max-w-md mx-auto">
-            <span className="text-xs text-gray-500 uppercase tracking-widest whitespace-nowrap">Add rider</span>
+            <span className="text-xs text-stone-500 uppercase tracking-widest whitespace-nowrap">Add rider</span>
             <div className="flex-1 relative">
               <input
                 type="text"
@@ -384,14 +384,14 @@ export function Qualifying() {
                 placeholder="Late arrival name…"
                 autoComplete="off"
                 spellCheck={false}
-                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-gray-600"
+                className="w-full bg-stone-900 border border-stone-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent)] placeholder:text-stone-600"
               />
               {addError && <p className="absolute text-red-400 text-xs mt-0.5">{addError}</p>}
             </div>
             <button
               onClick={handleAddRider}
               disabled={!addName.trim()}
-              className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-white text-sm font-bold transition-colors"
+              className="px-4 py-2 rounded bg-stone-700 hover:bg-stone-600 disabled:bg-stone-800 disabled:text-stone-600 text-white text-sm font-bold transition-colors"
             >
               Add
             </button>

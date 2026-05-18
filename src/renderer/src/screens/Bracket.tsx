@@ -32,7 +32,7 @@ export function Bracket() {
       <div className="flex items-center">
         <button
           onClick={() => setPhase('registration')}
-          className="text-gray-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
+          className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
         >
           ← Riders
         </button>
@@ -47,7 +47,7 @@ export function Bracket() {
 
       {nextMatch ? (
         <div className="flex flex-col items-center gap-4 pb-8">
-          <div className="text-gray-400 text-lg">
+          <div className="text-stone-400 text-lg">
             Next:{' '}
             <strong className="text-white">
               {riders.find((r) => r.id === nextMatch.topRiderId)?.name}
@@ -59,7 +59,7 @@ export function Bracket() {
           </div>
           <button
             onClick={handleStartMatch}
-            className="px-16 py-4 bg-green-600 hover:bg-green-500 text-white text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+            className="px-16 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
           >
             Start Race →
           </button>
@@ -68,7 +68,7 @@ export function Bracket() {
         <div className="flex flex-col items-center pb-8">
           <button
             onClick={() => setPhase('complete')}
-            className="px-16 py-4 bg-yellow-600 hover:bg-yellow-500 text-white text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+            className="px-16 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
           >
             View Final Results →
           </button>

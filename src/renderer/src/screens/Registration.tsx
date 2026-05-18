@@ -64,8 +64,8 @@ export function Registration() {
         <h2 className="text-4xl font-black uppercase tracking-widest text-white">
           Rider Registration
         </h2>
-        <p className="text-gray-500 mt-1">{config.name} · {config.distanceMetres}m sprint</p>
-        <p className="text-gray-600 text-sm mt-1">
+        <p className="text-stone-500 mt-1">{config.name} · {config.distanceMetres}m sprint</p>
+        <p className="text-stone-600 text-sm mt-1">
           Any number of riders can qualify — top {BRACKET_SIZE} advance to the bracket
         </p>
       </div>
@@ -80,7 +80,7 @@ export function Registration() {
             maxLength={24}
             onChange={(e) => { setInput(e.target.value); setError('') }}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            className="w-full bg-gray-900 border border-gray-700 rounded px-4 py-3 text-white text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-600"
+            className="w-full bg-stone-900 border border-stone-700 rounded px-4 py-3 text-white text-lg font-medium focus:outline-none focus:ring-2 focus:ring-[var(--accent)] placeholder:text-stone-600"
             placeholder="Rider name…"
             autoFocus
             autoComplete="off"
@@ -91,7 +91,7 @@ export function Registration() {
         <button
           onClick={handleAdd}
           disabled={!input.trim()}
-          className="px-5 py-3 rounded bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-bold text-lg transition-colors"
+          className="px-5 py-3 rounded bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] font-bold text-lg transition-colors"
         >
           Add
         </button>
@@ -100,7 +100,7 @@ export function Registration() {
       {/* Rider list */}
       <div className="flex-1 scrollable w-full max-w-md mx-auto">
         {riders.length === 0 ? (
-          <p className="text-gray-600 text-center py-8">No riders added yet</p>
+          <p className="text-stone-600 text-center py-8">No riders added yet</p>
         ) : (
           <div className="flex flex-col gap-2">
             {riders.map((rider, i) => {
@@ -110,10 +110,10 @@ export function Registration() {
               return (
                 <div
                   key={rider.id}
-                  className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-4 py-3"
+                  className="flex items-center justify-between bg-stone-900 border border-stone-800 rounded-lg px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-gray-600 text-sm w-6 text-right">{i + 1}</span>
+                    <span className="text-stone-600 text-sm w-6 text-right">{i + 1}</span>
                     <span className="text-white font-medium text-lg">{rider.name}</span>
                     {hasResult && (
                       <span className="text-xs text-green-400 border border-green-800 rounded px-1.5 py-0.5 uppercase tracking-widest">
@@ -123,7 +123,7 @@ export function Registration() {
                   </div>
                   <button
                     onClick={() => removeRider(rider.id)}
-                    className="text-gray-600 hover:text-red-400 text-xl leading-none px-2 transition-colors"
+                    className="text-stone-600 hover:text-red-400 text-xl leading-none px-2 transition-colors"
                     aria-label="Remove rider"
                   >
                     ×
@@ -138,12 +138,12 @@ export function Registration() {
       {/* Footer */}
       <div className="w-full max-w-md mx-auto pb-8 flex flex-col gap-3">
         {riders.length > 0 && riders.length < 2 && (
-          <p className="text-yellow-500 text-sm text-center">Add at least 2 riders to continue</p>
+          <p className="text-amber-500 text-sm text-center">Add at least 2 riders to continue</p>
         )}
         <button
           disabled={!canContinue}
           onClick={handleContinue}
-          className="w-full py-4 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white text-xl font-bold tracking-widest uppercase transition-colors"
+          className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors"
         >
           {continueLabel}
         </button>
@@ -152,7 +152,7 @@ export function Registration() {
         {!confirmNewEvent ? (
           <button
             onClick={() => setConfirmNewEvent(true)}
-            className="w-full py-2 rounded-lg border border-gray-800 hover:border-gray-600 text-gray-600 hover:text-gray-400 text-sm font-medium tracking-widest uppercase transition-colors"
+            className="w-full py-2 rounded-lg border border-stone-800 hover:border-stone-600 text-stone-600 hover:text-stone-400 text-sm font-medium tracking-widest uppercase transition-colors"
           >
             New Event
           </button>
@@ -166,7 +166,7 @@ export function Registration() {
             </button>
             <button
               onClick={() => setConfirmNewEvent(false)}
-              className="px-4 py-2 rounded-lg border border-gray-700 text-gray-500 hover:text-white text-sm transition-colors"
+              className="px-4 py-2 rounded-lg border border-stone-700 text-stone-500 hover:text-white text-sm transition-colors"
             >
               Cancel
             </button>

@@ -19,7 +19,7 @@ export function BracketTree({ rounds, riders, currentMatchId }: Props) {
     <div className="flex gap-8 items-start overflow-x-auto pb-4">
       {rounds.map((round, rIdx) => (
         <div key={round.round} className="flex flex-col gap-4 min-w-[200px]">
-          <div className="text-xs text-gray-500 uppercase tracking-widest text-center pb-2">
+          <div className="text-xs text-stone-500 uppercase tracking-widest text-center pb-2">
             {roundLabels[rIdx] ?? `Round ${rIdx + 1}`}
           </div>
 
@@ -37,15 +37,15 @@ export function BracketTree({ rounds, riders, currentMatchId }: Props) {
                   key={match.id}
                   className={clsx(
                     'border rounded-lg overflow-hidden',
-                    isCurrent ? 'border-yellow-500' : 'border-gray-700'
+                    isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'
                   )}
                 >
                   <div
                     className={clsx(
-                      'px-3 py-2 text-sm font-medium border-b border-gray-700',
+                      'px-3 py-2 text-sm font-medium border-b border-stone-700',
                       match.winnerId === match.topRiderId && match.winnerId
-                        ? 'text-green-400 bg-gray-800'
-                        : 'text-gray-300 bg-gray-900'
+                        ? 'text-green-400 bg-stone-800'
+                        : 'text-stone-300 bg-stone-900'
                     )}
                   >
                     {topName}
@@ -54,8 +54,8 @@ export function BracketTree({ rounds, riders, currentMatchId }: Props) {
                     className={clsx(
                       'px-3 py-2 text-sm font-medium',
                       match.winnerId === match.bottomRiderId && match.winnerId
-                        ? 'text-green-400 bg-gray-800'
-                        : 'text-gray-300 bg-gray-900'
+                        ? 'text-green-400 bg-stone-800'
+                        : 'text-stone-300 bg-stone-900'
                     )}
                   >
                     {bottomName}
