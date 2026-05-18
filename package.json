@@ -1,0 +1,85 @@
+{
+  "name": "sprint-series",
+  "version": "1.0.0",
+  "description": "Head-to-head bike trainer sprint competition",
+  "main": "./out/main/index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-rebuild -f -w @abandonware/noble || echo 'Noble rebuild skipped'",
+    "build:mac": "npm run build && electron-builder --mac",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-26",
+    "clsx": "^2.1.1",
+    "electron-store": "^8.2.0",
+    "framer-motion": "^12.0.0",
+    "nanoid": "^5.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@electron/rebuild": "^4.0.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^6.0.0",
+    "vitest": "^4.0.0"
+  },
+  "build": {
+    "appId": "com.sprintseries.app",
+    "productName": "Sprint Series",
+    "directories": {
+      "buildResources": "build"
+    },
+    "files": [
+      "!**/.eslintrc.{js,cjs}",
+      "!**/.prettierignore",
+      "!**/.prettierrc.yaml",
+      "!**/electron.vite.config.{js,ts,mjs,cjs}",
+      "!**/vite.{js,ts,mjs,cjs}.config",
+      "!**/{.electron-builder.config.js,tsconfig,tsconfig.*,*.spec.js}"
+    ],
+    "asarUnpack": [
+      "resources/**",
+      "**/node_modules/@abandonware/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        }
+      ],
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "Sprint Series needs Bluetooth to connect to bike trainers."
+      },
+      "notarize": false
+    },
+    "dmg": {
+      "artifactName": "${name}-${version}.${ext}"
+    }
+  }
+}
