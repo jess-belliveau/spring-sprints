@@ -6,6 +6,7 @@ import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
 import { BRACKET_SIZE } from '@shared/constants'
+import { WattBomber } from '../components/WattBomber'
 import type { RaceResult } from '@shared/types'
 
 export function Qualifying() {
@@ -273,11 +274,12 @@ export function Qualifying() {
 
         {/* Leaderboard sidebar */}
         <div className="w-64 border-l border-gray-800 flex flex-col overflow-hidden">
+          {/* Time leaderboard */}
           <div className="px-4 pt-4 pb-2 text-xs text-gray-500 uppercase tracking-widest flex justify-between">
             <span>Leaderboard</span>
             <span>{sortedResults.length}/{riders.length}</span>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 pb-4">
+          <div className="flex-1 overflow-y-auto px-2 pb-2">
             {sortedResults.length === 0 ? (
               <p className="text-gray-700 text-xs text-center py-6">No times yet</p>
             ) : (
@@ -317,6 +319,12 @@ export function Qualifying() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Watt Bomber section */}
+          <div className="border-t border-gray-800 px-4 pt-3 pb-2">
+            <div className="text-xs text-gray-500 uppercase tracking-widest mb-2">Watt Bomber</div>
+            <WattBomber results={existingResults} riders={riders} limit={3} />
           </div>
         </div>
       </div>

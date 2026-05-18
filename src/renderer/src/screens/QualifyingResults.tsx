@@ -1,5 +1,6 @@
 import { useEventStore, selectRiders, selectQualifyingResults } from '../store/event.store'
 import { Leaderboard } from '../components/Leaderboard'
+import { WattBomber } from '../components/WattBomber'
 import { BRACKET_SIZE } from '@shared/constants'
 
 export function QualifyingResults() {
@@ -49,8 +50,15 @@ export function QualifyingResults() {
         )}
       </div>
 
-      <div className="flex-1 scrollable">
-        <Leaderboard rows={rows} advanceCount={advanceCount} onRetry={handleRetry} />
+      <div className="flex-1 flex gap-8 min-h-0">
+        <div className="flex-1 overflow-y-auto">
+          <Leaderboard rows={rows} advanceCount={advanceCount} onRetry={handleRetry} />
+        </div>
+
+        <div className="w-56 shrink-0 flex flex-col gap-3">
+          <div className="text-xs text-gray-500 uppercase tracking-widest">Watt Bomber</div>
+          <WattBomber results={results} riders={riders} limit={3} />
+        </div>
       </div>
 
       <button

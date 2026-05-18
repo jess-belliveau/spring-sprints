@@ -24,6 +24,8 @@ const electronAPI = {
   loadEvent: () => ipcRenderer.invoke(IPC.EVENT_LOAD) as Promise<EventData | null>,
   saveEvent: (event: EventData) => ipcRenderer.invoke(IPC.EVENT_SAVE, event),
   clearEvent: () => ipcRenderer.invoke(IPC.EVENT_CLEAR),
+  exportCsv: (csv: string, filename: string) =>
+    ipcRenderer.invoke(IPC.EVENT_EXPORT_CSV, { csv, filename }) as Promise<{ saved: boolean }>,
 
   // ── Push listeners ────────────────────────────────────────────────────────
   onDeviceFound: (cb: (device: BLEDeviceInfo) => void): UnsubscribeFn => {

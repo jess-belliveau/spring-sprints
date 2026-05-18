@@ -9,6 +9,7 @@ export const IPC = {
   EVENT_SAVE: 'event:save',
   EVENT_LOAD: 'event:load',
   EVENT_CLEAR: 'event:clear',
+  EVENT_EXPORT_CSV: 'event:export-csv',
 
   // Main → Renderer (send/on)
   BLUETOOTH_DEVICE_FOUND: 'bluetooth:device-found',
