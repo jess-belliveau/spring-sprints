@@ -9,8 +9,9 @@ const INNER_R = 162
 const STROKE = 36
 const SOLO_R = 194
 
-// Cap dead-reckoning extrapolation at 200ms to avoid runaway between ticks
-const MAX_EXTRAP_S = 0.2
+// Cap dead-reckoning extrapolation. Must be > longest device tick interval:
+// demo = 250ms, real FTMS = 1000ms. 2.0s gives margin without runaway.
+const MAX_EXTRAP_S = 2.0
 
 interface Props {
   left: { riderName: string } | null
@@ -85,11 +86,25 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       const r = state.race?.right
       const now = Date.now()
 
+      // Only reset the dead-reckoning clock when THIS lane's data actually changed.
+      // Without this guard, a right-lane telemetry tick would silently reset the
+      // left-lane timestamp (same store update, stale left values), causing the
+      // left arc to snap back to the last telemetry position on the next RAF frame.
       if (l) {
-        leftPhysRef.current = { pos: l.distanceCovered, vel: l.finished ? 0 : l.velocityMs, ts: now }
+        const newPos = l.distanceCovered
+        const newVel = l.finished ? 0 : l.velocityMs
+        const lp = leftPhysRef.current
+        if (newPos !== lp.pos || newVel !== lp.vel) {
+          leftPhysRef.current = { pos: newPos, vel: newVel, ts: now }
+        }
       }
       if (r) {
-        rightPhysRef.current = { pos: r.distanceCovered, vel: r.finished ? 0 : r.velocityMs, ts: now }
+        const newPos = r.distanceCovered
+        const newVel = r.finished ? 0 : r.velocityMs
+        const rp = rightPhysRef.current
+        if (newPos !== rp.pos || newVel !== rp.vel) {
+          rightPhysRef.current = { pos: newPos, vel: newVel, ts: now }
+        }
       }
 
       const hb = hasBothRef.current
@@ -108,14 +123,14 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         if (leftWattsRef.current)    leftWattsRef.current.textContent    = String(l.instantWatts)
         if (leftCadenceRef.current)  leftCadenceRef.current.textContent  = String(l.cadenceRpm)
         if (leftTimeRef.current)     leftTimeRef.current.textContent     = fmt(l.elapsedMs)
-        if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
+        if (leftFinishedRef.current) leftFinishedRef.current.style.visibility = l.finished ? 'visible' : 'hidden'
       }
       if (r) {
         if (rightDistRef.current)     rightDistRef.current.textContent     = String(Math.round(rightDist))
         if (rightWattsRef.current)    rightWattsRef.current.textContent    = String(r.instantWatts)
         if (rightCadenceRef.current)  rightCadenceRef.current.textContent  = String(r.cadenceRpm)
         if (rightTimeRef.current)     rightTimeRef.current.textContent     = fmt(r.elapsedMs)
-        if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
+        if (rightFinishedRef.current) rightFinishedRef.current.style.visibility = r.finished ? 'visible' : 'hidden'
       }
 
       if (leftLeadsRef.current) {
@@ -246,7 +261,7 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
 
           <span ref={leftTimeRef} className="text-2xl font-mono text-stone-500">0:00.00</span>
 
-          <span ref={leftFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ display: 'none' }}>
+          <span ref={leftFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>
@@ -356,7 +371,7 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
 
           <span ref={rightTimeRef} className="text-2xl font-mono text-stone-500">0:00.00</span>
 
-          <span ref={rightFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ display: 'none' }}>
+          <span ref={rightFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>

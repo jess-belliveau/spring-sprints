@@ -68,6 +68,7 @@ export class BluetoothManager extends EventEmitter {
   private scanning = false
   private nobleReady = false
   private scanPending = false // scan requested before noble was ready
+  private ftmsOnly = true
 
   constructor(getWindow: () => BrowserWindow | null, isDev = false) {
     super()
@@ -113,7 +114,9 @@ export class BluetoothManager extends EventEmitter {
     }
   }
 
-  startScan(): void {
+  startScan(ftmsOnly = true): void {
+    this.ftmsOnly = ftmsOnly
+
     // Always emit demo devices in dev mode so they appear alongside real hardware
     if (this.isDev) {
       for (const d of this.demoDevices.values()) {
@@ -136,10 +139,10 @@ export class BluetoothManager extends EventEmitter {
   private _startNobleScan(): void {
     this.scanning = true
     this.scanResults.clear()
-    // Scan without a service UUID filter — many trainers don't include the FTMS
-    // UUID (0x1826) in their advertisement packet even though they support it.
-    // We filter by device name presence in the discover handler instead.
-    noble.startScanning([], false)
+    // When ftmsOnly is true, filter by FTMS service UUID (0x1826) to reduce noise.
+    // When false, scan all named devices — useful for trainers that support FTMS
+    // but don't include the service UUID in their advertisement packet.
+    noble.startScanning(this.ftmsOnly ? ['1826'] : [], false)
   }
 
   stopScan(): void {

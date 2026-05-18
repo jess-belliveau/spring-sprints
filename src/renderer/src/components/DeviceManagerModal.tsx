@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import type { Lane } from '@shared/types'
 
@@ -28,12 +28,20 @@ export function DeviceManagerModal({ onClose }: Props) {
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
   const clearScannedDevices = useBluetoothStore((s) => s.clearScannedDevices)
   const setDeviceConnecting = useBluetoothStore((s) => s.setDeviceConnecting)
+  const [ftmsOnly, setFtmsOnly] = useState(true)
 
   useEffect(() => {
     clearScannedDevices()
-    window.electronAPI.scanStart()
+    window.electronAPI.scanStart(ftmsOnly)
     return () => { window.electronAPI.scanStop() }
-  }, [clearScannedDevices])
+  }, [clearScannedDevices, ftmsOnly])
+
+  function handleToggleFtms() {
+    window.electronAPI.scanStop()
+    clearScannedDevices()
+    setFtmsOnly((v) => !v)
+    // The effect re-runs via ftmsOnly dependency and restarts the scan
+  }
 
   async function handleDisconnect(lane: Lane) {
     await window.electronAPI.disconnectDevice(lane)
@@ -158,6 +166,17 @@ export function DeviceManagerModal({ onClose }: Props) {
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
                 Scanning
               </span>
+              <button
+                onClick={handleToggleFtms}
+                title={ftmsOnly ? 'Showing FTMS devices only — click to show all' : 'Showing all devices — click to show FTMS only'}
+                className={`ml-auto text-xs border rounded px-2 py-0.5 uppercase tracking-widest transition-colors ${
+                  ftmsOnly
+                    ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                    : 'text-stone-500 border-stone-700 hover:text-stone-300'
+                }`}
+              >
+                FTMS only
+              </button>
             </div>
 
             {available.length === 0 ? (

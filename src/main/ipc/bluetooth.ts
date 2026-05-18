@@ -4,8 +4,8 @@ import { IPC } from '../../shared/ipc-channels'
 import type { Lane } from '../../shared/types'
 
 export function registerBluetoothHandlers(manager: BluetoothManager): void {
-  ipcMain.handle(IPC.BLUETOOTH_SCAN_START, () => {
-    manager.startScan()
+  ipcMain.handle(IPC.BLUETOOTH_SCAN_START, (_event, payload?: { ftmsOnly?: boolean }) => {
+    manager.startScan(payload?.ftmsOnly ?? true)
   })
 
   ipcMain.handle(IPC.BLUETOOTH_SCAN_STOP, () => {

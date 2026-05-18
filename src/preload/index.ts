@@ -6,7 +6,7 @@ type UnsubscribeFn = () => void
 
 const electronAPI = {
   // ── Bluetooth ────────────────────────────────────────────────────────────
-  scanStart: () => ipcRenderer.invoke(IPC.BLUETOOTH_SCAN_START),
+  scanStart: (ftmsOnly = true) => ipcRenderer.invoke(IPC.BLUETOOTH_SCAN_START, { ftmsOnly }),
   scanStop: () => ipcRenderer.invoke(IPC.BLUETOOTH_SCAN_STOP),
   connectDevice: (deviceId: string, lane: Lane) =>
     ipcRenderer.invoke(IPC.BLUETOOTH_CONNECT, { deviceId, lane }) as Promise<{
