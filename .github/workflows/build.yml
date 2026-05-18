@@ -46,7 +46,7 @@ jobs:
         run: npx electron-vite build
 
       - name: Package with electron-builder
-        run: npx electron-builder --mac --${{ matrix.electron_arch }}
+        run: npx electron-builder --mac --${{ matrix.electron_arch }} --publish never
         env:
           # Disable code signing — remove these if you set up a cert
           CSC_IDENTITY_AUTO_DISCOVERY: false
