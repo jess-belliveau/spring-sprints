@@ -164,13 +164,13 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       if (rightDistRef.current) rightDistRef.current.textContent = String(Math.round(rightPosRef.current))
       if (centreDistRef.current) centreDistRef.current.textContent = `${Math.round(leftPosRef.current)}m`
 
-      // Leads indicator
+      // Leads indicator — visibility keeps layout stable (no reflow = no stat flicker)
       if (leftLeadsRef.current) {
-        leftLeadsRef.current.style.display = leftLeads ? '' : 'none'
+        leftLeadsRef.current.style.visibility = leftLeads ? 'visible' : 'hidden'
         if (leftLeads) leftLeadsRef.current.textContent = `▲ LEADS +${gap}m`
       }
       if (rightLeadsRef.current) {
-        rightLeadsRef.current.style.display = rightLeads ? '' : 'none'
+        rightLeadsRef.current.style.visibility = rightLeads ? 'visible' : 'hidden'
         if (rightLeads) rightLeadsRef.current.textContent = `▲ LEADS +${gap}m`
       }
 
@@ -188,12 +188,12 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       {/* ── Left rider stats ── */}
       {left && (
         <div className="flex-1 flex flex-col items-end gap-3 min-w-0">
-          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-left)' }}>
-            {left.riderName}
+          <span ref={leftLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-left)', visibility: 'hidden' }}>
+            ▲ LEADS +0m
           </span>
 
-          <span ref={leftLeadsRef} className="text-sm font-bold tracking-widest" style={{ color: 'var(--lane-left)', display: 'none' }}>
-            ▲ LEADS +0m
+          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-left)' }}>
+            {left.riderName}
           </span>
 
           <span className="text-8xl font-black tabular-nums text-white leading-none text-right">
@@ -294,12 +294,12 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       {/* ── Right rider stats ── */}
       {right && (
         <div className="flex-1 flex flex-col items-start gap-3 min-w-0">
-          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-right)' }}>
-            {right.riderName}
+          <span ref={rightLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-right)', visibility: 'hidden' }}>
+            ▲ LEADS +0m
           </span>
 
-          <span ref={rightLeadsRef} className="text-sm font-bold tracking-widest" style={{ color: 'var(--lane-right)', display: 'none' }}>
-            ▲ LEADS +0m
+          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-right)' }}>
+            {right.riderName}
           </span>
 
           <span className="text-8xl font-black tabular-nums text-white leading-none">

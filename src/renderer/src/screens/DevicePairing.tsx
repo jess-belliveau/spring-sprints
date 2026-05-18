@@ -117,7 +117,7 @@ export function DevicePairing() {
         <button
           disabled={!leftConnected}
           onClick={() => setPhase('qualifying')}
-          className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors"
+          className="self-center px-16 py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors"
         >
           Begin Qualifying →
         </button>

@@ -40,7 +40,7 @@ const THEMES: { value: Theme; label: string }[] = [
 
 function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   return (
-    <div className="fixed bottom-3 right-3 z-30 flex items-center gap-0.5 bg-stone-900 border border-stone-700 rounded-full px-1 py-1">
+    <div className="fixed bottom-11 left-3 z-30 flex items-center gap-0.5 bg-stone-900 border border-stone-700 rounded-full px-1 py-1">
       {THEMES.map((t) => (
         <button
           key={t.value}

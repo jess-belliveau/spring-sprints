@@ -63,7 +63,7 @@ export function QualifyingResults() {
 
       <button
         onClick={generateBracket}
-        className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors mb-8"
+        className="self-center px-16 py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors mb-8"
       >
         Generate Bracket →
       </button>
