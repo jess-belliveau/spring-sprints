@@ -59,6 +59,16 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  bluetoothManager?.destroy()
   if (process.platform !== 'darwin') app.quit()
+})
+
+// Clean up BLE before windows close so disconnects are attempted gracefully.
+app.on('before-quit', () => {
+  bluetoothManager?.destroy()
+})
+
+// Noble holds a native CoreBluetooth handle that keeps the event loop alive
+// indefinitely. app.exit() bypasses the lingering handle and exits immediately.
+app.on('will-quit', () => {
+  app.exit(0)
 })

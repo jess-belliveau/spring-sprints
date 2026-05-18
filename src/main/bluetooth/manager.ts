@@ -325,5 +325,6 @@ export class BluetoothManager extends EventEmitter {
     this.connectedDevices.forEach((device) => device.disconnect().catch(() => {}))
     this.connectedDevices.clear()
     this.raceWatchers.clear()
+    noble.removeAllListeners()
   }
 }

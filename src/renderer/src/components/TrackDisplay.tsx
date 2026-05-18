@@ -8,7 +8,9 @@ const OUTER_R = 224
 const INNER_R = 162
 const STROKE = 36
 const SOLO_R = 194
-const ALPHA = 0.18
+
+// Telemetry arrives ~10 Hz; CSS transition bridges each gap on the compositor thread.
+const ARC_TRANSITION = 'stroke-dashoffset 110ms linear, opacity 150ms ease'
 
 interface Props {
   left: { riderName: string } | null
@@ -36,6 +38,15 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
   const leftR = hasBoth ? INNER_R : SOLO_R
   const rightR = OUTER_R
 
+  // Keep prop values in refs so the subscription closure always reads current values
+  // without needing to re-subscribe on every prop change.
+  const hasBothRef = useRef(hasBoth)
+  hasBothRef.current = hasBoth
+  const leftRRef = useRef(leftR)
+  leftRRef.current = leftR
+  const targetDistanceRef = useRef(targetDistance)
+  targetDistanceRef.current = targetDistance
+
   // SVG refs
   const leftArcRef = useRef<SVGCircleElement>(null)
   const rightArcRef = useRef<SVGCircleElement>(null)
@@ -59,71 +70,40 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
   const rightTimeRef = useRef<HTMLSpanElement>(null)
   const rightFinishedRef = useRef<HTMLSpanElement>(null)
 
-  // Animation state — plain refs, never React state
-  const leftPosRef = useRef(0)
-  const rightPosRef = useRef(0)
-  const leftTargetRef = useRef(0)
-  const rightTargetRef = useRef(0)
-  const rafRef = useRef<number>(0)
-
-  // Non-reactive store subscription — updates text/status nodes at telemetry rate (~10 Hz)
+  // Single subscription — drives all DOM updates directly from telemetry ticks.
+  // stroke-dashoffset is set as a CSS *property* (element.style) so the CSS
+  // transition declared on the element smooths each tick on the compositor thread.
+  // No JS animation loop, no lerp.
   useEffect(() => {
     return useRaceStore.subscribe((state) => {
       const l = state.race?.left
       const r = state.race?.right
+      const hb = hasBothRef.current
+      const lR = leftRRef.current
+      const rR = rightRRef.current
+      const dist = targetDistanceRef.current
 
-      if (l) {
-        leftTargetRef.current = l.distanceCovered
-        if (leftWattsRef.current) leftWattsRef.current.textContent = String(l.instantWatts)
-        if (leftCadenceRef.current) leftCadenceRef.current.textContent = String(l.cadenceRpm)
-        if (leftTimeRef.current) leftTimeRef.current.textContent = fmt(l.elapsedMs)
-        if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
-      } else {
-        leftTargetRef.current = 0
+      const leftDist  = l?.distanceCovered ?? 0
+      const rightDist = r?.distanceCovered ?? 0
+      const leftPct   = leftDist  / dist
+      const rightPct  = rightDist / dist
+      const leftLeads  = hb && leftDist  > rightDist + 0.5
+      const rightLeads = hb && rightDist > leftDist  + 0.5
+      const gap = Math.round(Math.abs(leftDist - rightDist))
+
+      // ── Arcs (CSS style so transition applies) ──────────────────────────────
+      if (leftArcRef.current) {
+        leftArcRef.current.style.strokeDashoffset = String(arcOffset(lR, leftPct))
+        leftArcRef.current.style.opacity = hb && rightLeads ? '0.4' : '1'
+      }
+      if (rightArcRef.current) {
+        rightArcRef.current.style.strokeDashoffset = String(arcOffset(rR, rightPct))
+        rightArcRef.current.style.opacity = hb && leftLeads ? '0.4' : '1'
       }
 
-      if (r) {
-        rightTargetRef.current = r.distanceCovered
-        if (rightWattsRef.current) rightWattsRef.current.textContent = String(r.instantWatts)
-        if (rightCadenceRef.current) rightCadenceRef.current.textContent = String(r.cadenceRpm)
-        if (rightTimeRef.current) rightTimeRef.current.textContent = fmt(r.elapsedMs)
-        if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
-      } else {
-        rightTargetRef.current = 0
-      }
-    })
-  }, [])
-
-  // RAF loop — direct SVG/DOM attribute writes, zero React involvement
-  useEffect(() => {
-    function frame() {
-      const lt = leftTargetRef.current
-      const rt = rightTargetRef.current
-
-      // Snap to 0 when race resets (target drops well below smoothed pos)
-      if (lt < leftPosRef.current - 1) leftPosRef.current = 0
-      if (rt < rightPosRef.current - 1) rightPosRef.current = 0
-
-      leftPosRef.current += (lt - leftPosRef.current) * ALPHA
-      rightPosRef.current += (rt - rightPosRef.current) * ALPHA
-      if (Math.abs(lt - leftPosRef.current) < 0.01) leftPosRef.current = lt
-      if (Math.abs(rt - rightPosRef.current) < 0.01) rightPosRef.current = rt
-
-      const leftPct = leftPosRef.current / targetDistance
-      const rightPct = rightPosRef.current / targetDistance
-      const leftLeads = hasBoth && leftPosRef.current > rightPosRef.current + 0.5
-      const rightLeads = hasBoth && rightPosRef.current > leftPosRef.current + 0.5
-      const gap = Math.round(Math.abs(leftPosRef.current - rightPosRef.current))
-
-      // Arcs
-      leftArcRef.current?.setAttribute('stroke-dashoffset', String(arcOffset(leftR, leftPct)))
-      leftArcRef.current?.setAttribute('opacity', hasBoth && rightLeads ? '0.4' : '1')
-      rightArcRef.current?.setAttribute('stroke-dashoffset', String(arcOffset(rightR, rightPct)))
-      rightArcRef.current?.setAttribute('opacity', hasBoth && leftLeads ? '0.4' : '1')
-
-      // Left dot
+      // ── Left dot ────────────────────────────────────────────────────────────
       if (leftPct > 0.001) {
-        const [lx, ly] = dotXY(leftPct, leftR)
+        const [lx, ly] = dotXY(leftPct, lR)
         if (leftDotRef.current) {
           leftDotRef.current.setAttribute('cx', String(lx))
           leftDotRef.current.setAttribute('cy', String(ly))
@@ -136,13 +116,13 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
           leftGlowRef.current.style.display = leftLeads ? '' : 'none'
         }
       } else {
-        if (leftDotRef.current) leftDotRef.current.style.display = 'none'
+        if (leftDotRef.current)  leftDotRef.current.style.display  = 'none'
         if (leftGlowRef.current) leftGlowRef.current.style.display = 'none'
       }
 
-      // Right dot
+      // ── Right dot ───────────────────────────────────────────────────────────
       if (rightPct > 0.001) {
-        const [rx, ry] = dotXY(rightPct, rightR)
+        const [rx, ry] = dotXY(rightPct, rR)
         if (rightDotRef.current) {
           rightDotRef.current.setAttribute('cx', String(rx))
           rightDotRef.current.setAttribute('cy', String(ry))
@@ -155,16 +135,28 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
           rightGlowRef.current.style.display = rightLeads ? '' : 'none'
         }
       } else {
-        if (rightDotRef.current) rightDotRef.current.style.display = 'none'
+        if (rightDotRef.current)  rightDotRef.current.style.display  = 'none'
         if (rightGlowRef.current) rightGlowRef.current.style.display = 'none'
       }
 
-      // Smoothed distance counters (60fps — looks much better than 10Hz jumps)
-      if (leftDistRef.current) leftDistRef.current.textContent = String(Math.round(leftPosRef.current))
-      if (rightDistRef.current) rightDistRef.current.textContent = String(Math.round(rightPosRef.current))
-      if (centreDistRef.current) centreDistRef.current.textContent = `${Math.round(leftPosRef.current)}m`
+      // ── Stats text ──────────────────────────────────────────────────────────
+      if (l) {
+        if (leftDistRef.current)    leftDistRef.current.textContent    = String(Math.round(leftDist))
+        if (leftWattsRef.current)   leftWattsRef.current.textContent   = String(l.instantWatts)
+        if (leftCadenceRef.current) leftCadenceRef.current.textContent = String(l.cadenceRpm)
+        if (leftTimeRef.current)    leftTimeRef.current.textContent    = fmt(l.elapsedMs)
+        if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
+      }
+      if (r) {
+        if (rightDistRef.current)    rightDistRef.current.textContent    = String(Math.round(rightDist))
+        if (rightWattsRef.current)   rightWattsRef.current.textContent   = String(r.instantWatts)
+        if (rightCadenceRef.current) rightCadenceRef.current.textContent = String(r.cadenceRpm)
+        if (rightTimeRef.current)    rightTimeRef.current.textContent    = fmt(r.elapsedMs)
+        if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
+      }
+      if (centreDistRef.current) centreDistRef.current.textContent = `${Math.round(leftDist)}m`
 
-      // Leads indicator — visibility keeps layout stable (no reflow = no stat flicker)
+      // ── Leads ───────────────────────────────────────────────────────────────
       if (leftLeadsRef.current) {
         leftLeadsRef.current.style.visibility = leftLeads ? 'visible' : 'hidden'
         if (leftLeads) leftLeadsRef.current.textContent = `▲ LEADS +${gap}m`
@@ -173,13 +165,8 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         rightLeadsRef.current.style.visibility = rightLeads ? 'visible' : 'hidden'
         if (rightLeads) rightLeadsRef.current.textContent = `▲ LEADS +${gap}m`
       }
-
-      rafRef.current = requestAnimationFrame(frame)
-    }
-
-    rafRef.current = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [targetDistance, hasBoth, leftR])
+    })
+  }, [])
 
   // React renders the DOM structure once — all live updates happen imperatively above
   return (
@@ -227,18 +214,21 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         )}
         <circle cx={CX} cy={CY} r={leftR} fill="none" style={{ stroke: 'var(--track-bg)' }} strokeWidth={STROKE} />
 
-        {/* Right arc — starts fully hidden (dashoffset = full circumference) */}
+        {/* Right arc — stroke-dashoffset set as CSS property so transition applies */}
         {right && (
           <circle
             ref={rightArcRef}
             cx={CX} cy={CY} r={OUTER_R}
             fill="none"
-            style={{ stroke: 'var(--lane-right)' }}
             strokeWidth={STROKE}
             strokeDasharray={2 * Math.PI * OUTER_R}
-            strokeDashoffset={2 * Math.PI * OUTER_R}
             strokeLinecap="butt"
             transform={`rotate(-90 ${CX} ${CY})`}
+            style={{
+              stroke: 'var(--lane-right)',
+              strokeDashoffset: 2 * Math.PI * OUTER_R,
+              transition: ARC_TRANSITION,
+            }}
           />
         )}
 
@@ -248,26 +238,29 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
             ref={leftArcRef}
             cx={CX} cy={CY} r={leftR}
             fill="none"
-            style={{ stroke: 'var(--lane-left)' }}
             strokeWidth={STROKE}
             strokeDasharray={2 * Math.PI * leftR}
-            strokeDashoffset={2 * Math.PI * leftR}
             strokeLinecap="butt"
             transform={`rotate(-90 ${CX} ${CY})`}
+            style={{
+              stroke: 'var(--lane-left)',
+              strokeDashoffset: 2 * Math.PI * leftR,
+              transition: ARC_TRANSITION,
+            }}
           />
         )}
 
-        {/* Dots — hidden initially, positioned by RAF loop */}
+        {/* Dots — hidden initially, positioned by subscription */}
         {right && (
           <>
             <circle ref={rightGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-right)', display: 'none' }} opacity={0.25} />
-            <circle ref={rightDotRef} cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-right)', display: 'none' }} />
+            <circle ref={rightDotRef}  cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-right)', display: 'none' }} />
           </>
         )}
         {left && (
           <>
             <circle ref={leftGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-left)', display: 'none' }} opacity={0.25} />
-            <circle ref={leftDotRef} cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-left)', display: 'none' }} />
+            <circle ref={leftDotRef}  cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-left)', display: 'none' }} />
           </>
         )}
 
@@ -327,3 +320,6 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
     </div>
   )
 }
+
+// Needed by the subscription closure — module-level so it doesn't recreate on render
+const rightRRef = { current: OUTER_R }
