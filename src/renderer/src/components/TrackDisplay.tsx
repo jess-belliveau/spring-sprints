@@ -236,33 +236,33 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
 
       {/* ── Left rider stats ── */}
       {left && (
-        <div className="flex-1 flex flex-col items-end gap-3 min-w-0">
+        <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
           <span ref={leftLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-left)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 
-          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-left)' }}>
+          <span className="text-5xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-left)' }}>
             {left.riderName}
           </span>
 
           <span className="text-8xl font-black tabular-nums text-white leading-none text-right">
             <span ref={leftDistRef}>0</span>
-            <span className="text-3xl text-stone-500"> m</span>
+            <span className="text-4xl text-stone-500"> m</span>
           </span>
 
-          <span className="text-5xl font-bold tabular-nums text-amber-400 leading-none">
+          <span className="text-7xl font-bold tabular-nums text-amber-400 leading-none">
             <span ref={leftWattsRef}>0</span>
-            <span className="text-2xl text-stone-400"> W</span>
+            <span className="text-3xl text-stone-400"> W</span>
           </span>
 
-          <span className="text-3xl font-bold tabular-nums text-stone-300 leading-none">
+          <span className="text-5xl font-bold tabular-nums text-stone-300 leading-none">
             <span ref={leftCadenceRef}>0</span>
-            <span className="text-lg text-stone-500"> rpm</span>
+            <span className="text-2xl text-stone-500"> rpm</span>
           </span>
 
-          <span ref={leftTimeRef} className="text-2xl font-mono text-stone-500">0:00.00</span>
+          <span ref={leftTimeRef} className="text-3xl font-mono text-stone-500">0:00.00</span>
 
-          <span ref={leftFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
+          <span ref={leftFinishedRef} className="text-xl font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>
@@ -346,33 +346,33 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
 
       {/* ── Right rider stats ── */}
       {right && (
-        <div className="flex-1 flex flex-col items-start gap-3 min-w-0">
+        <div className="flex-1 flex flex-col items-start gap-2 min-w-0">
           <span ref={rightLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-right)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 
-          <span className="text-3xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-right)' }}>
+          <span className="text-5xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-right)' }}>
             {right.riderName}
           </span>
 
           <span className="text-8xl font-black tabular-nums text-white leading-none">
             <span ref={rightDistRef}>0</span>
-            <span className="text-3xl text-stone-500"> m</span>
+            <span className="text-4xl text-stone-500"> m</span>
           </span>
 
-          <span className="text-5xl font-bold tabular-nums text-amber-400 leading-none">
+          <span className="text-7xl font-bold tabular-nums text-amber-400 leading-none">
             <span ref={rightWattsRef}>0</span>
-            <span className="text-2xl text-stone-400"> W</span>
+            <span className="text-3xl text-stone-400"> W</span>
           </span>
 
-          <span className="text-3xl font-bold tabular-nums text-stone-300 leading-none">
+          <span className="text-5xl font-bold tabular-nums text-stone-300 leading-none">
             <span ref={rightCadenceRef}>0</span>
-            <span className="text-lg text-stone-500"> rpm</span>
+            <span className="text-2xl text-stone-500"> rpm</span>
           </span>
 
-          <span ref={rightTimeRef} className="text-2xl font-mono text-stone-500">0:00.00</span>
+          <span ref={rightTimeRef} className="text-3xl font-mono text-stone-500">0:00.00</span>
 
-          <span ref={rightFinishedRef} className="text-lg font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
+          <span ref={rightFinishedRef} className="text-xl font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectRiders, selectBracket, selectBracketF, selectBracketOpen, selectConfig, selectHasGenderSplit } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
+import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
@@ -25,6 +26,11 @@ export function HeadToHead() {
   const setRacing = useRaceStore((s) => s.setRacing)
   const setLaneFinished = useRaceStore((s) => s.setLaneFinished)
   const resetRace = useRaceStore((s) => s.resetRace)
+
+  const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+  const leftReady = connectedDevices['left']?.status === 'connected'
+  const rightReady = connectedDevices['right']?.status === 'connected'
+  const devicesReady = leftReady && rightReady
 
   const { playCountdownBeep, playFinishFanfare } = useAudio()
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -217,12 +223,20 @@ export function HeadToHead() {
 
         {isIdle && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
-            <button
-              onClick={startRace}
-              className="px-16 py-6 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-3xl font-bold tracking-widest uppercase rounded-xl transition-colors shadow-2xl"
-            >
-              START RACE
-            </button>
+            <div className="flex flex-col items-center gap-3">
+              {!devicesReady && (
+                <div className="text-amber-400 text-sm uppercase tracking-widest">
+                  {!leftReady && !rightReady ? 'No devices connected' : !leftReady ? 'Left lane not connected' : 'Right lane not connected'}
+                </div>
+              )}
+              <button
+                onClick={startRace}
+                disabled={!devicesReady}
+                className="px-16 py-6 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-3xl font-bold tracking-widest uppercase rounded-xl transition-colors shadow-2xl"
+              >
+                START RACE
+              </button>
+            </div>
           </div>
         )}
 

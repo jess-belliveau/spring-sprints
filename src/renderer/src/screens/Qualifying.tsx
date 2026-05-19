@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectRiders, selectConfig, selectQualifyingResults } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
+import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
@@ -37,6 +38,9 @@ export function Qualifying() {
   const setRacing = useRaceStore((s) => s.setRacing)
   const setLaneFinished = useRaceStore((s) => s.setLaneFinished)
   const resetRace = useRaceStore((s) => s.resetRace)
+
+  const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+  const leftReady = connectedDevices['left']?.status === 'connected'
 
   const { playCountdownBeep, playFinishFanfare } = useAudio()
 
@@ -290,9 +294,13 @@ export function Qualifying() {
                     {currentRider.gender === 'M' ? 'Men' : 'Women'}
                   </div>
                 )}
+                {!leftReady && (
+                  <div className="text-amber-400 text-sm uppercase tracking-widest">Left lane not connected</div>
+                )}
                 <button
                   onClick={startRace}
-                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                  disabled={!leftReady}
+                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   START RACE
                 </button>
