@@ -20,8 +20,8 @@ export function QualifyingResults() {
     setPhase('qualifying')
   }
 
-  function handleFreePairStart(leftName: string, rightName: string) {
-    setFreePairRiders({ leftName, rightName, returnPhase: 'qualifying-results' })
+  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
+    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'qualifying-results' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }

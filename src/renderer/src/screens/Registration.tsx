@@ -62,8 +62,8 @@ export function Registration() {
 
   const canContinue = riders.length >= 2
 
-  function handleFreePairStart(leftName: string, rightName: string) {
-    setFreePairRiders({ leftName, rightName, returnPhase: 'registration' })
+  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
+    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'registration' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useBluetoothStore } from '../store/bluetooth.store'
+import { useEventStore, selectConfig } from '../store/event.store'
 
 interface FreePairModalProps {
   onClose: () => void
-  onStart: (leftName: string, rightName: string) => void
+  onStart: (leftName: string, rightName: string, distance: number) => void
 }
 
 const LANE_DOT_COLOR: Record<string, string> = {
@@ -13,10 +14,15 @@ const LANE_DOT_COLOR: Record<string, string> = {
   empty: 'bg-stone-600'
 }
 
+const DISTANCE_PRESETS = [100, 250, 500, 1000]
+
 export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
+  const config = useEventStore(selectConfig)
+  const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+
   const [leftName, setLeftName] = useState('')
   const [rightName, setRightName] = useState('')
-  const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+  const [distance, setDistance] = useState(config.distanceMetres)
 
   const leftStatus = connectedDevices['left']?.status ?? 'empty'
   const rightStatus = connectedDevices['right']?.status ?? 'empty'
@@ -27,7 +33,7 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
 
   function handleStart() {
     if (!canStart) return
-    onStart(leftName.trim(), rightName.trim())
+    onStart(leftName.trim(), rightName.trim(), distance)
   }
 
   return (
@@ -41,6 +47,27 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
           <p className="text-stone-500 text-sm mb-6">Outside the bracket — results are not recorded.</p>
 
           <div className="flex flex-col gap-5">
+            {/* Distance */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-stone-500 uppercase tracking-widest font-bold">Distance</label>
+              <div className="flex gap-2">
+                {DISTANCE_PRESETS.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDistance(d)}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-bold uppercase tracking-widest transition-colors ${
+                      distance === d
+                        ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                        : 'border-stone-700 text-stone-400 hover:border-stone-500 hover:text-white'
+                    }`}
+                  >
+                    {d < 1000 ? `${d}m` : `${d / 1000}km`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Left lane */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-[var(--lane-left)] uppercase tracking-widest font-bold">
@@ -71,6 +98,7 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
               )}
             </div>
 
+            {/* Right lane */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-[var(--lane-right)] uppercase tracking-widest font-bold">

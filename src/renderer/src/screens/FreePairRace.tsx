@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectConfig } from '../store/event.store'
+import { useEventStore } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
@@ -8,7 +8,6 @@ import { useAudio } from '../hooks/useAudio'
 import type { LaneResult } from '@shared/types'
 
 export function FreePairRace() {
-  const config = useEventStore(selectConfig)
   const setPhase = useEventStore((s) => s.setPhase)
 
   const freePairRiders = useRaceStore((s) => s.freePairRiders)
@@ -41,6 +40,7 @@ export function FreePairRace() {
 
   const leftName = freePairRiders?.leftName ?? ''
   const rightName = freePairRiders?.rightName ?? ''
+  const distance = freePairRiders?.distance ?? 250
 
   // If riders are missing (e.g. app restarted mid-session), bail back to bracket
   useEffect(() => {
@@ -95,7 +95,7 @@ export function FreePairRace() {
       { riderId: leftRiderIdRef.current, riderName: leftName },
       { riderId: rightRiderIdRef.current, riderName: rightName }
     )
-    window.electronAPI.startRace(raceId, config.distanceMetres, ['left', 'right'])
+    window.electronAPI.startRace(raceId, distance, ['left', 'right'])
 
     let count = 3
     setCountdown(count)
@@ -188,7 +188,7 @@ export function FreePairRace() {
             <TrackDisplay
               left={{ riderName: leftName }}
               right={{ riderName: rightName }}
-              targetDistance={config.distanceMetres}
+              targetDistance={distance}
             />
           </div>
         )}

@@ -73,9 +73,9 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
   const leftPhysRef  = useRef({ pos: 0, vel: 0, ts: 0 })
   const rightPhysRef = useRef({ pos: 0, vel: 0, ts: 0 })
 
-  // Leads state written by subscription, read by RAF
-  const leftLeadsStateRef  = useRef(false)
-  const rightLeadsStateRef = useRef(false)
+  // Signed gap in metres written by subscription, read by RAF.
+  // Positive = left leads, negative = right leads, 0 = equal / solo.
+  const leadGapRef = useRef(0)
 
   const rafRef = useRef(0)
 
@@ -110,12 +110,8 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       const hb = hasBothRef.current
       const leftDist  = l?.distanceCovered ?? 0
       const rightDist = r?.distanceCovered ?? 0
-      const leftLeads  = hb && leftDist  > rightDist + 0.5
-      const rightLeads = hb && rightDist > leftDist  + 0.5
-      const gap = Math.round(Math.abs(leftDist - rightDist))
 
-      leftLeadsStateRef.current  = leftLeads
-      rightLeadsStateRef.current = rightLeads
+      leadGapRef.current = hb ? leftDist - rightDist : 0
 
       // Stats text
       if (l) {
@@ -133,14 +129,10 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         if (rightFinishedRef.current) rightFinishedRef.current.style.visibility = r.finished ? 'visible' : 'hidden'
       }
 
-      if (leftLeadsRef.current) {
-        leftLeadsRef.current.style.visibility = leftLeads ? 'visible' : 'hidden'
-        if (leftLeads) leftLeadsRef.current.textContent = `▲ LEADS +${gap}m`
-      }
-      if (rightLeadsRef.current) {
-        rightLeadsRef.current.style.visibility = rightLeads ? 'visible' : 'hidden'
-        if (rightLeads) rightLeadsRef.current.textContent = `▲ LEADS +${gap}m`
-      }
+      // Keep leads text content fresh; visibility is controlled by the RAF loop.
+      const absGap = Math.round(Math.abs(leftDist - rightDist))
+      if (leftLeadsRef.current)  leftLeadsRef.current.textContent  = `▲ LEADS +${absGap}m`
+      if (rightLeadsRef.current) rightLeadsRef.current.textContent = `▲ LEADS +${absGap}m`
     })
 
     // RAF loop drives arc and dot positions at 60fps via dead reckoning
@@ -162,32 +154,36 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       const leftPct  = leftEstDist  / dist
       const rightPct = rightEstDist / dist
 
-      const leftLeads  = leftLeadsStateRef.current
-      const rightLeads = rightLeadsStateRef.current
+      // Smooth advantage: ramps from 0 at a 0.5 m gap to 1 at a 5 m gap.
+      // Both values are 0 in solo mode (hb = false).
+      const rawGap   = leadGapRef.current           // + = left leads
+      const leftAdv  = hb ? Math.min(1, Math.max(0, ( rawGap - 0.5) / 4.5)) : 0
+      const rightAdv = hb ? Math.min(1, Math.max(0, (-rawGap - 0.5) / 4.5)) : 0
 
-      // Arcs
+      // Arcs — trailing dims gradually as the gap opens
       if (leftArcRef.current) {
         leftArcRef.current.style.strokeDashoffset = String(arcOffset(lR, leftPct))
-        leftArcRef.current.style.opacity = hb && rightLeads ? '0.4' : '1'
+        leftArcRef.current.style.opacity = String(1 - rightAdv * 0.6)
       }
       if (rightArcRef.current) {
         rightArcRef.current.style.strokeDashoffset = String(arcOffset(OUTER_R, rightPct))
-        rightArcRef.current.style.opacity = hb && leftLeads ? '0.4' : '1'
+        rightArcRef.current.style.opacity = String(1 - leftAdv * 0.6)
       }
 
-      // Left dot
+      // Left dot — radius and glow scale with advantage
       if (leftPct > 0.001) {
         const [lx, ly] = dotXY(leftPct, lR)
         if (leftDotRef.current) {
           leftDotRef.current.setAttribute('cx', String(lx))
           leftDotRef.current.setAttribute('cy', String(ly))
-          leftDotRef.current.setAttribute('r', leftLeads ? '17' : '12')
+          leftDotRef.current.setAttribute('r', String(12 + leftAdv * 5))
           leftDotRef.current.style.display = ''
         }
         if (leftGlowRef.current) {
           leftGlowRef.current.setAttribute('cx', String(lx))
           leftGlowRef.current.setAttribute('cy', String(ly))
-          leftGlowRef.current.style.display = leftLeads ? '' : 'none'
+          leftGlowRef.current.style.opacity = String(leftAdv * 0.3)
+          leftGlowRef.current.style.display = leftAdv > 0 ? '' : 'none'
         }
       } else {
         if (leftDotRef.current)  leftDotRef.current.style.display  = 'none'
@@ -200,18 +196,23 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         if (rightDotRef.current) {
           rightDotRef.current.setAttribute('cx', String(rx))
           rightDotRef.current.setAttribute('cy', String(ry))
-          rightDotRef.current.setAttribute('r', rightLeads ? '17' : '12')
+          rightDotRef.current.setAttribute('r', String(12 + rightAdv * 5))
           rightDotRef.current.style.display = ''
         }
         if (rightGlowRef.current) {
           rightGlowRef.current.setAttribute('cx', String(rx))
           rightGlowRef.current.setAttribute('cy', String(ry))
-          rightGlowRef.current.style.display = rightLeads ? '' : 'none'
+          rightGlowRef.current.style.opacity = String(rightAdv * 0.3)
+          rightGlowRef.current.style.display = rightAdv > 0 ? '' : 'none'
         }
       } else {
         if (rightDotRef.current)  rightDotRef.current.style.display  = 'none'
         if (rightGlowRef.current) rightGlowRef.current.style.display = 'none'
       }
+
+      // Leads label fades in as advantage grows
+      if (leftLeadsRef.current)  leftLeadsRef.current.style.opacity  = String(leftAdv)
+      if (rightLeadsRef.current) rightLeadsRef.current.style.opacity = String(rightAdv)
 
       // Solo centre distance
       if (centreDistRef.current) {
@@ -236,7 +237,7 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       {/* ── Left rider stats ── */}
       {left && (
         <div className="flex-1 flex flex-col items-end gap-3 min-w-0">
-          <span ref={leftLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-left)', visibility: 'hidden' }}>
+          <span ref={leftLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-left)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 
@@ -312,13 +313,13 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
         {/* Dots — hidden initially, positioned by RAF */}
         {right && (
           <>
-            <circle ref={rightGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-right)', display: 'none' }} opacity={0.25} />
+            <circle ref={rightGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-right)', display: 'none', opacity: 0 }} />
             <circle ref={rightDotRef}  cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-right)', display: 'none' }} />
           </>
         )}
         {left && (
           <>
-            <circle ref={leftGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-left)', display: 'none' }} opacity={0.25} />
+            <circle ref={leftGlowRef} cx={CX} cy={CY} r={28} style={{ fill: 'var(--lane-left)', display: 'none', opacity: 0 }} />
             <circle ref={leftDotRef}  cx={CX} cy={CY} r={12} style={{ fill: 'var(--lane-left)', display: 'none' }} />
           </>
         )}
@@ -346,7 +347,7 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       {/* ── Right rider stats ── */}
       {right && (
         <div className="flex-1 flex flex-col items-start gap-3 min-w-0">
-          <span ref={rightLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-right)', visibility: 'hidden' }}>
+          <span ref={rightLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-right)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 

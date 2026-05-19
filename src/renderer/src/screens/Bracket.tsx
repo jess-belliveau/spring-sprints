@@ -32,8 +32,8 @@ export function Bracket() {
     setPhase('head-to-head')
   }
 
-  function handleFreePairStart(leftName: string, rightName: string) {
-    setFreePairRiders({ leftName, rightName, returnPhase: 'bracket' })
+  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
+    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'bracket' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }
