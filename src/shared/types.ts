@@ -8,6 +8,7 @@ export type EventPhase =
   | 'qualifying-results'
   | 'bracket'
   | 'head-to-head'
+  | 'free-pair'
   | 'complete'
 
 export type RaceStatus = 'idle' | 'countdown' | 'racing' | 'finished'

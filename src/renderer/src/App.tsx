@@ -11,6 +11,7 @@ import { Qualifying } from './screens/Qualifying'
 import { QualifyingResults } from './screens/QualifyingResults'
 import { Bracket } from './screens/Bracket'
 import { HeadToHead } from './screens/HeadToHead'
+import { FreePairRace } from './screens/FreePairRace'
 import { FinalResults } from './screens/FinalResults'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DeviceManagerModal } from './components/DeviceManagerModal'
@@ -23,6 +24,7 @@ const PHASE_ROUTES: Record<string, string> = {
   'qualifying-results': '/qualifying-results',
   bracket: '/bracket',
   'head-to-head': '/headtohead',
+  'free-pair': '/free-pair',
   complete: '/final'
 }
 
@@ -121,6 +123,7 @@ export default function App() {
           <Route path="/qualifying-results" element={<QualifyingResults />} />
           <Route path="/bracket" element={<Bracket />} />
           <Route path="/headtohead" element={<HeadToHead />} />
+          <Route path="/free-pair" element={<FreePairRace />} />
           <Route path="/final" element={<FinalResults />} />
         </Routes>
       </ErrorBoundary>

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket } from '../store/event.store'
+import { useRaceStore } from '../store/race.store'
+import { FreePairModal } from '../components/FreePairModal'
 import { BRACKET_SIZE } from '@shared/constants'
 
 export function Registration() {
@@ -14,9 +16,11 @@ export function Registration() {
   const generateBracket = useEventStore((s) => s.generateBracket)
   const reset = useEventStore((s) => s.reset)
 
+  const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
   const [confirmNewEvent, setConfirmNewEvent] = useState(false)
+  const [freePairOpen, setFreePairOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const completedIds = new Set(
@@ -58,7 +62,14 @@ export function Registration() {
 
   const canContinue = riders.length >= 2
 
+  function handleFreePairStart(leftName: string, rightName: string) {
+    setFreePairRiders({ leftName, rightName, returnPhase: 'registration' })
+    setFreePairOpen(false)
+    setPhase('free-pair')
+  }
+
   return (
+    <>
     <div className="flex flex-col h-full px-8 pt-12 gap-6">
       <div className="text-center">
         <h2 className="text-4xl font-black uppercase tracking-widest text-white">
@@ -148,6 +159,13 @@ export function Registration() {
           {continueLabel}
         </button>
 
+        <button
+          onClick={() => setFreePairOpen(true)}
+          className="w-full py-3 rounded-lg border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white text-sm font-bold tracking-widest uppercase transition-colors"
+        >
+          Free Pair Race
+        </button>
+
         {/* New Event — two-tap confirm to prevent accidents */}
         {!confirmNewEvent ? (
           <button
@@ -174,5 +192,13 @@ export function Registration() {
         )}
       </div>
     </div>
+
+    {freePairOpen && (
+      <FreePairModal
+        onClose={() => setFreePairOpen(false)}
+        onStart={handleFreePairStart}
+      />
+    )}
+    </>
   )
 }

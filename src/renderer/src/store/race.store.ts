@@ -3,12 +3,14 @@ import type { ActiveRaceState, Lane, LaneResult, LiveLaneState, TelemetryFrame }
 
 interface RaceState {
   race: ActiveRaceState | null
+  freePairRiders: { leftName: string; rightName: string; returnPhase: import('@shared/types').EventPhase } | null
 
   initRace: (raceId: string, left: { riderId: string; riderName: string } | null, right: { riderId: string; riderName: string } | null) => void
   setCountdown: (value: number | null) => void
   setRacing: () => void
   applyTelemetry: (frame: TelemetryFrame) => void
   setLaneFinished: (lane: Lane, result: LaneResult) => void
+  setFreePairRiders: (riders: { leftName: string; rightName: string; returnPhase: import('@shared/types').EventPhase }) => void
   resetRace: () => void
 }
 
@@ -28,6 +30,7 @@ function makeLane(rider: { riderId: string; riderName: string }): LiveLaneState 
 
 export const useRaceStore = create<RaceState>((set) => ({
   race: null,
+  freePairRiders: null,
 
   initRace: (raceId, left, right) =>
     set({
@@ -103,5 +106,7 @@ export const useRaceStore = create<RaceState>((set) => ({
       return { race: { ...newRace, status: bothFinished ? 'finished' : 'racing' } }
     }),
 
-  resetRace: () => set({ race: null })
+  setFreePairRiders: (riders) => set({ freePairRiders: riders }),
+
+  resetRace: () => set({ race: null, freePairRiders: null })
 }))

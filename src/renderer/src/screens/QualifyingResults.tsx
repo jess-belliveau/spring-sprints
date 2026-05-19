@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { useEventStore, selectRiders, selectQualifyingResults } from '../store/event.store'
+import { useRaceStore } from '../store/race.store'
 import { Leaderboard } from '../components/Leaderboard'
 import { WattBomber } from '../components/WattBomber'
+import { FreePairModal } from '../components/FreePairModal'
 import { BRACKET_SIZE } from '@shared/constants'
 
 export function QualifyingResults() {
@@ -9,10 +12,18 @@ export function QualifyingResults() {
   const generateBracket = useEventStore((s) => s.generateBracket)
   const removeQualifyingResult = useEventStore((s) => s.removeQualifyingResult)
   const setPhase = useEventStore((s) => s.setPhase)
+  const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
+  const [freePairOpen, setFreePairOpen] = useState(false)
 
   function handleRetry(riderId: string) {
     removeQualifyingResult(riderId)
     setPhase('qualifying')
+  }
+
+  function handleFreePairStart(leftName: string, rightName: string) {
+    setFreePairRiders({ leftName, rightName, returnPhase: 'qualifying-results' })
+    setFreePairOpen(false)
+    setPhase('free-pair')
   }
 
   const sorted = [...results].sort((a, b) => {
@@ -30,13 +41,20 @@ export function QualifyingResults() {
   const advanceCount = Math.min(BRACKET_SIZE, rows.length)
 
   return (
+    <>
     <div className="flex flex-col h-full px-8 pt-8 gap-6">
-      <div className="flex items-center">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => setPhase('registration')}
           className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
         >
           ← Riders
+        </button>
+        <button
+          onClick={() => setFreePairOpen(true)}
+          className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 hover:border-stone-500 rounded px-3 py-1.5 uppercase tracking-widest transition-colors"
+        >
+          Free Pair
         </button>
       </div>
       <div className="text-center -mt-2">
@@ -68,5 +86,13 @@ export function QualifyingResults() {
         Generate Bracket →
       </button>
     </div>
+
+    {freePairOpen && (
+      <FreePairModal
+        onClose={() => setFreePairOpen(false)}
+        onStart={handleFreePairStart}
+      />
+    )}
+    </>
   )
 }
