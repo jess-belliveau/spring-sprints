@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 export function useAudio() {
   const ctxRef = useRef<AudioContext | null>(null)
@@ -51,6 +51,10 @@ export function useAudio() {
       ;[523, 659, 784].forEach((freq) => beep(freq, 600))
     }, notes.length * 120)
   }, [beep, getCtx])
+
+  useEffect(() => {
+    return () => { ctxRef.current?.close() }
+  }, [])
 
   return { beep, playCountdownBeep, playFinishFanfare }
 }

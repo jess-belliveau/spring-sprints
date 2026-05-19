@@ -42,6 +42,8 @@ export function Qualifying() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const finishHandledRef = useRef(false)
   const heldRef = useRef(false)
+  const currentRiderRef = useRef(currentRider)
+  currentRiderRef.current = currentRider
   const falseStartEnabledRef = useRef(falseStartEnabled)
   falseStartEnabledRef.current = falseStartEnabled
   const wattsHoldRef = useRef<HTMLSpanElement>(null)
@@ -78,13 +80,13 @@ export function Qualifying() {
   useEffect(() => {
     const unsub = window.electronAPI.onRaceFinished(({ lane, result }) => {
       if (lane !== 'left') return
-      if (!currentRider) return
-      const laneResult = { ...result, riderId: currentRider.id }
+      if (!currentRiderRef.current) return
+      const laneResult = { ...result, riderId: currentRiderRef.current.id }
       setLaneFinished('left', laneResult)
       setFinishResult(laneResult)
     })
     return unsub
-  }, [currentRider, setLaneFinished])
+  }, [setLaneFinished])
 
   function startRace() {
     if (!currentRider) return

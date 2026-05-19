@@ -6,8 +6,8 @@ export function useIPCListeners(): void {
   const addScannedDevice = useBluetoothStore((s) => s.addScannedDevice)
   const setDeviceConnected = useBluetoothStore((s) => s.setDeviceConnected)
   const setDeviceDisconnected = useBluetoothStore((s) => s.setDeviceDisconnected)
+  const setDeviceError = useBluetoothStore((s) => s.setDeviceError)
   const applyTelemetry = useRaceStore((s) => s.applyTelemetry)
-  const setLaneFinished = useRaceStore((s) => s.setLaneFinished)
 
   useEffect(() => {
     const unsubs = [
@@ -23,15 +23,20 @@ export function useIPCListeners(): void {
         setDeviceDisconnected(lane)
       }),
 
+      window.electronAPI.onDeviceError(({ lane }) => {
+        if (lane) setDeviceError(lane, '')
+      }),
+
       window.electronAPI.onTelemetry((frame) => {
         applyTelemetry(frame)
       }),
 
-      window.electronAPI.onRaceFinished(({ lane, result }) => {
-        setLaneFinished(lane, result)
-      })
+      // onRaceFinished is NOT handled here — each race screen registers its own
+      // handler so it can supply the correct riderId and trigger screen-specific
+      // logic (fanfare, resultsRef). A global handler would fire first with an
+      // empty riderId from the main process and cause a double state update.
     ]
 
     return () => unsubs.forEach((fn) => fn())
-  }, [addScannedDevice, setDeviceConnected, setDeviceDisconnected, applyTelemetry, setLaneFinished])
+  }, [addScannedDevice, setDeviceConnected, setDeviceDisconnected, setDeviceError, applyTelemetry])
 }
