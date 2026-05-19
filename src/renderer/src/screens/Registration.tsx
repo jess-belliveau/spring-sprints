@@ -1,27 +1,38 @@
 import { useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket } from '../store/event.store'
+import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket, selectBracketF, selectBracketOpen } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
 import { BRACKET_SIZE } from '@shared/constants'
+
+const GENDER_BTN = (active: boolean, color: string) =>
+  `text-xs font-bold px-2 py-1 rounded border transition-colors ${
+    active ? `${color} border-current` : 'text-stone-600 border-stone-700 hover:border-stone-500 hover:text-stone-400'
+  }`
 
 export function Registration() {
   const config = useEventStore(selectConfig)
   const riders = useEventStore(selectRiders)
   const qualifyingResults = useEventStore(selectQualifyingResults)
-  const bracket = useEventStore(selectBracket)
+  const bracketM = useEventStore(selectBracket)
+  const bracketF = useEventStore(selectBracketF)
+  const bracketOpen = useEventStore(selectBracketOpen)
   const addRider = useEventStore((s) => s.addRider)
   const removeRider = useEventStore((s) => s.removeRider)
+  const setRiderGender = useEventStore((s) => s.setRiderGender)
   const setPhase = useEventStore((s) => s.setPhase)
   const generateBracket = useEventStore((s) => s.generateBracket)
   const reset = useEventStore((s) => s.reset)
 
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [input, setInput] = useState('')
+  const [newGender, setNewGender] = useState<'M' | 'F'>('M')
   const [error, setError] = useState('')
   const [confirmNewEvent, setConfirmNewEvent] = useState(false)
   const [freePairOpen, setFreePairOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const hasBracket = bracketM.length > 0 || bracketF.length > 0 || bracketOpen.length > 0
 
   const completedIds = new Set(
     qualifyingResults.map((r) => r.left?.riderId ?? r.right?.riderId)
@@ -35,14 +46,14 @@ export function Registration() {
       setError('Name already added')
       return
     }
-    addRider({ id: nanoid(), name })
+    addRider({ id: nanoid(), name, gender: newGender })
     setInput('')
     setError('')
     inputRef.current?.focus()
   }
 
   function handleContinue() {
-    if (bracket.length > 0) {
+    if (hasBracket) {
       generateBracket()
     } else if (hasUnqualifiedRiders) {
       setPhase(qualifyingResults.length > 0 ? 'qualifying' : 'device-pairing')
@@ -54,7 +65,7 @@ export function Registration() {
   }
 
   const continueLabel = (() => {
-    if (bracket.length > 0) return 'Regenerate Bracket →'
+    if (hasBracket) return 'Regenerate Bracket →'
     if (hasUnqualifiedRiders && qualifyingResults.length > 0) return 'Back to Qualifying →'
     if (qualifyingResults.length > 0) return 'Back to Results →'
     return `Continue with ${riders.length > 0 ? riders.length : ''} Riders →`.trim()
@@ -77,7 +88,7 @@ export function Registration() {
         </h2>
         <p className="text-stone-500 mt-1">{config.name} · {config.distanceMetres}m sprint</p>
         <p className="text-stone-600 text-sm mt-1">
-          Any number of riders can qualify — top {BRACKET_SIZE} advance to the bracket
+          Any number of riders can qualify — top {BRACKET_SIZE} per gender advance to the bracket
         </p>
       </div>
 
@@ -99,10 +110,20 @@ export function Registration() {
           />
           {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
         </div>
+        <div className="flex rounded border border-stone-700 overflow-hidden shrink-0 self-start mt-0.5">
+          <button
+            onClick={() => setNewGender('M')}
+            className={`px-3 py-3 text-sm font-bold transition-colors ${newGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500 hover:text-stone-300'}`}
+          >M</button>
+          <button
+            onClick={() => setNewGender('F')}
+            className={`px-3 py-3 text-sm font-bold border-l border-stone-700 transition-colors ${newGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500 hover:text-stone-300'}`}
+          >F</button>
+        </div>
         <button
           onClick={handleAdd}
           disabled={!input.trim()}
-          className="px-5 py-3 rounded bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] font-bold text-lg transition-colors"
+          className="px-5 py-3 rounded bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] font-bold text-lg transition-colors self-start"
         >
           Add
         </button>
@@ -123,22 +144,34 @@ export function Registration() {
                   key={rider.id}
                   className="flex items-center justify-between bg-stone-900 border border-stone-800 rounded-lg px-4 py-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-stone-600 text-sm w-6 text-right">{i + 1}</span>
-                    <span className="text-white font-medium text-lg">{rider.name}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-stone-600 text-sm w-6 text-right shrink-0">{i + 1}</span>
+                    <span className="text-white font-medium text-lg truncate">{rider.name}</span>
                     {hasResult && (
-                      <span className="text-xs text-green-400 border border-green-800 rounded px-1.5 py-0.5 uppercase tracking-widest">
+                      <span className="text-xs text-green-400 border border-green-800 rounded px-1.5 py-0.5 uppercase tracking-widest shrink-0">
                         Qualified
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => removeRider(rider.id)}
-                    className="text-stone-600 hover:text-red-400 text-xl leading-none px-2 transition-colors"
-                    aria-label="Remove rider"
-                  >
-                    ×
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <div className="flex rounded overflow-hidden border border-stone-700">
+                      <button
+                        onClick={() => setRiderGender(rider.id, 'M')}
+                        className={GENDER_BTN(rider.gender === 'M', 'text-blue-300')}
+                      >M</button>
+                      <button
+                        onClick={() => setRiderGender(rider.id, 'F')}
+                        className={`${GENDER_BTN(rider.gender === 'F', 'text-pink-300')} border-l border-stone-700`}
+                      >F</button>
+                    </div>
+                    <button
+                      onClick={() => removeRider(rider.id)}
+                      className="text-stone-600 hover:text-red-400 text-xl leading-none px-2 transition-colors"
+                      aria-label="Remove rider"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -166,7 +199,6 @@ export function Registration() {
           Free Pair Race
         </button>
 
-        {/* New Event — two-tap confirm to prevent accidents */}
         {!confirmNewEvent ? (
           <button
             onClick={() => setConfirmNewEvent(true)}

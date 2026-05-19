@@ -13,14 +13,21 @@ function getRiderName(id: string | null, riders: Rider[]): string {
 }
 
 export function BracketTree({ rounds, riders, currentMatchId }: Props) {
-  const roundLabels = ['Quarter-Finals', 'Semi-Finals', 'Final']
+  const totalRounds = rounds.length
+  function roundLabel(idx: number): string {
+    const fromEnd = totalRounds - 1 - idx
+    if (fromEnd === 0) return 'Final'
+    if (fromEnd === 1) return 'Semi-Finals'
+    if (fromEnd === 2) return 'Quarter-Finals'
+    return `Round ${idx + 1}`
+  }
 
   return (
     <div className="flex gap-8 items-start overflow-x-auto pb-4">
       {rounds.map((round, rIdx) => (
         <div key={round.round} className="flex flex-col gap-4 min-w-[200px]">
           <div className="text-xs text-stone-500 uppercase tracking-widest text-center pb-2">
-            {roundLabels[rIdx] ?? `Round ${rIdx + 1}`}
+            {roundLabel(rIdx)}
           </div>
 
           <div

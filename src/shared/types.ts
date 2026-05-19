@@ -51,9 +51,12 @@ export interface TelemetryFrame {
 
 // ── Riders & results ─────────────────────────────────────────────────────────
 
+export type BracketPool = 'M' | 'F' | 'Open'
+
 export interface Rider {
   id: string
   name: string
+  gender?: 'M' | 'F'
   seed?: number
 }
 
@@ -106,7 +109,9 @@ export interface EventData {
   config: EventConfig
   riders: Rider[]
   qualifyingResults: RaceResult[]
-  bracket: BracketRound[]
+  bracket: BracketRound[]     // M bracket (or combined for non-gender events)
+  bracketF: BracketRound[]    // Women's bracket
+  bracketOpen: BracketRound[] // Riders without gender
   currentRaceId: string | null
   phase: EventPhase
 }

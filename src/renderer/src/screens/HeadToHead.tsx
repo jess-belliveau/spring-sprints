@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders, selectBracket, selectConfig } from '../store/event.store'
+import { useEventStore, selectRiders, selectBracket, selectBracketF, selectBracketOpen, selectConfig, selectHasGenderSplit } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
-import type { LaneResult } from '@shared/types'
+import type { LaneResult, BracketPool } from '@shared/types'
 
 export function HeadToHead() {
   const riders = useEventStore(selectRiders)
-  const bracket = useEventStore(selectBracket)
+  const bracketM = useEventStore(selectBracket)
+  const bracketF = useEventStore(selectBracketF)
+  const bracketOpen = useEventStore(selectBracketOpen)
+  const hasGenderSplit = useEventStore(selectHasGenderSplit)
   const config = useEventStore(selectConfig)
   const currentRaceId = useEventStore((s) => s.event?.currentRaceId)
   const advanceBracket = useEventStore((s) => s.advanceBracket)
@@ -39,11 +42,19 @@ export function HeadToHead() {
   const rightWattsValRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
 
-  const currentMatch = bracket.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null
+  // Determine which bracket/pool the current match belongs to
+  const matchInM = bracketM.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null
+  const matchInF = !matchInM ? bracketF.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null : null
+  const matchInOpen = !matchInM && !matchInF ? bracketOpen.flatMap((r) => r.matches).find((m) => m.id === currentRaceId) ?? null : null
+  const currentMatch = matchInM ?? matchInF ?? matchInOpen
+  const matchPool: BracketPool = matchInM ? 'M' : matchInF ? 'F' : 'Open'
+  const matchPoolRef = useRef<BracketPool>(matchPool)
+  matchPoolRef.current = matchPool
+
   const leftRider = riders.find((r) => r.id === currentMatch?.topRiderId)
   const rightRider = riders.find((r) => r.id === currentMatch?.bottomRiderId)
 
-  // Non-reactive: false-start detection + hold overlay watts — avoids 10Hz re-renders
+  // Non-reactive: false-start detection
   useEffect(() => {
     return useRaceStore.subscribe((state) => {
       const lw = state.race?.left?.instantWatts ?? 0
@@ -84,7 +95,7 @@ export function HeadToHead() {
     const winnerId = leftTime < rightTime ? leftRider?.id : rightRider?.id
 
     if (currentMatch && winnerId) {
-      advanceBracket(currentMatch.id, winnerId, internalRaceIdRef.current)
+      advanceBracket(currentMatch.id, winnerId, internalRaceIdRef.current, matchPoolRef.current)
     }
   }, [raceStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -129,10 +140,7 @@ export function HeadToHead() {
   }
 
   function handleAbort() {
-    if (countdownRef.current) {
-      clearTimeout(countdownRef.current)
-      countdownRef.current = null
-    }
+    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
     fanfarePlayed.current = false
     resultsRef.current = {}
     window.electronAPI.stopRace()
@@ -157,12 +165,15 @@ export function HeadToHead() {
   const rightTime = resultsRef.current['right']?.finishTimeMs ?? Infinity
   const winnerName = leftTime < rightTime ? leftRider.name : rightRider.name
 
+  const poolLabel = hasGenderSplit
+    ? (matchPool === 'M' ? ' · Men' : matchPool === 'F' ? ' · Women' : ' · Open')
+    : ''
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex justify-between items-center px-8 py-4 border-b border-stone-800">
         <span className="text-xs text-stone-500 uppercase tracking-widest">
-          Round {currentMatch.round + 1} · Match {currentMatch.matchIndex + 1}
+          Round {currentMatch.round + 1} · Match {currentMatch.matchIndex + 1}{poolLabel}
           {' — '}
           <span className="text-[var(--lane-left)]">{leftRider.name}</span>
           {' vs '}
@@ -193,9 +204,7 @@ export function HeadToHead() {
         </div>
       </div>
 
-      {/* Race area */}
       <div className="flex-1 relative">
-        {/* Track — shown once race has started */}
         {raceStatus !== null && (
           <div className="absolute inset-0 flex">
             <TrackDisplay
@@ -206,7 +215,6 @@ export function HeadToHead() {
           </div>
         )}
 
-        {/* Start button — before race begins */}
         {isIdle && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <button
@@ -218,10 +226,8 @@ export function HeadToHead() {
           </div>
         )}
 
-        {/* Countdown overlay */}
         {raceStatus === 'countdown' && !countdownHeld && <Countdown value={countdownValue} />}
 
-        {/* False-start hold overlay */}
         {countdownHeld && (
           <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
             <div className="flex flex-col items-center gap-4">
@@ -239,7 +245,6 @@ export function HeadToHead() {
           </div>
         )}
 
-        {/* Winner overlay */}
         {isFinished && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
             <div className="flex flex-col items-center gap-6">
