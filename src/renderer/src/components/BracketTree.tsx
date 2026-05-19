@@ -5,6 +5,7 @@ interface Props {
   rounds: BracketRound[]
   riders: Rider[]
   currentMatchId?: string
+  mirrored?: boolean
 }
 
 function getRiderName(id: string | null, riders: Rider[]): string {
@@ -12,67 +13,72 @@ function getRiderName(id: string | null, riders: Rider[]): string {
   return riders.find((r) => r.id === id)?.name ?? 'Unknown'
 }
 
-export function BracketTree({ rounds, riders, currentMatchId }: Props) {
+export function BracketTree({ rounds, riders, currentMatchId, mirrored = false }: Props) {
   const totalRounds = rounds.length
-  function roundLabel(idx: number): string {
-    const fromEnd = totalRounds - 1 - idx
+  function roundLabel(originalIdx: number): string {
+    const fromEnd = totalRounds - 1 - originalIdx
     if (fromEnd === 0) return 'Final'
     if (fromEnd === 1) return 'Semi-Finals'
     if (fromEnd === 2) return 'Quarter-Finals'
-    return `Round ${idx + 1}`
+    return `Round ${originalIdx + 1}`
   }
+
+  const displayRounds = mirrored ? [...rounds].reverse() : rounds
 
   return (
     <div className="flex gap-8 items-start overflow-x-auto pb-4">
-      {rounds.map((round, rIdx) => (
-        <div key={round.round} className="flex flex-col gap-4 min-w-[200px]">
-          <div className="text-xs text-stone-500 uppercase tracking-widest text-center pb-2">
-            {roundLabel(rIdx)}
-          </div>
+      {displayRounds.map((round, rIdx) => {
+        const originalIdx = mirrored ? totalRounds - 1 - rIdx : rIdx
+        return (
+          <div key={round.round} className="flex flex-col gap-4 min-w-[200px]">
+            <div className="text-xs text-stone-500 uppercase tracking-widest text-center pb-2">
+              {roundLabel(originalIdx)}
+            </div>
 
-          <div
-            className="flex flex-col"
-            style={{ gap: `${Math.pow(2, rIdx + 1) * 16}px` }}
-          >
-            {round.matches.map((match) => {
-              const isCurrent = match.id === currentMatchId
-              const topName = getRiderName(match.topRiderId, riders)
-              const bottomName = getRiderName(match.bottomRiderId, riders)
+            <div
+              className="flex flex-col"
+              style={{ gap: `${Math.pow(2, originalIdx + 1) * 16}px` }}
+            >
+              {round.matches.map((match) => {
+                const isCurrent = match.id === currentMatchId
+                const topName = getRiderName(match.topRiderId, riders)
+                const bottomName = getRiderName(match.bottomRiderId, riders)
 
-              return (
-                <div
-                  key={match.id}
-                  className={clsx(
-                    'border rounded-lg overflow-hidden',
-                    isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'
-                  )}
-                >
+                return (
                   <div
+                    key={match.id}
                     className={clsx(
-                      'px-3 py-2 text-sm font-medium border-b border-stone-700',
-                      match.winnerId === match.topRiderId && match.winnerId
-                        ? 'text-green-400 bg-stone-800'
-                        : 'text-stone-300 bg-stone-900'
+                      'border rounded-lg overflow-hidden',
+                      isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'
                     )}
                   >
-                    {topName}
+                    <div
+                      className={clsx(
+                        'px-3 py-2 text-sm font-medium border-b border-stone-700',
+                        match.winnerId === match.topRiderId && match.winnerId
+                          ? 'text-green-400 bg-stone-800'
+                          : 'text-stone-300 bg-stone-900'
+                      )}
+                    >
+                      {topName}
+                    </div>
+                    <div
+                      className={clsx(
+                        'px-3 py-2 text-sm font-medium',
+                        match.winnerId === match.bottomRiderId && match.winnerId
+                          ? 'text-green-400 bg-stone-800'
+                          : 'text-stone-300 bg-stone-900'
+                      )}
+                    >
+                      {bottomName}
+                    </div>
                   </div>
-                  <div
-                    className={clsx(
-                      'px-3 py-2 text-sm font-medium',
-                      match.winnerId === match.bottomRiderId && match.winnerId
-                        ? 'text-green-400 bg-stone-800'
-                        : 'text-stone-300 bg-stone-900'
-                    )}
-                  >
-                    {bottomName}
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

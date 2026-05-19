@@ -25,6 +25,7 @@ interface EventState {
   addQualifyingResult: (result: RaceResult) => void
   removeQualifyingResult: (riderId: string) => void
   generateBracket: () => void
+  generateCustomBracket: (names: string[]) => void
   advanceBracket: (matchId: string, winnerId: string, raceResultId: string, pool: BracketPool) => void
   setCurrentRaceId: (id: string | null) => void
   reset: () => void
@@ -258,6 +259,24 @@ export const useEventStore = create<EventState>((set, _get) => ({
       const updatedRiders = riders.map((r) => allSeeded.find((sr) => sr.id === r.id) ?? r)
 
       const event = { ...s.event, riders: updatedRiders, bracket, bracketF, bracketOpen, phase: 'bracket' as EventPhase }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
+  generateCustomBracket: (names) =>
+    set((s) => {
+      if (!s.event) return s
+      const riders: Rider[] = names.map((name) => ({ id: nanoid(), name }))
+      const bracket = buildBracket(riders)
+      const event = {
+        ...s.event,
+        riders,
+        bracket,
+        bracketF: [],
+        bracketOpen: [],
+        qualifyingResults: [],
+        phase: 'bracket' as EventPhase
+      }
       window.electronAPI.saveEvent(event)
       return { event }
     }),

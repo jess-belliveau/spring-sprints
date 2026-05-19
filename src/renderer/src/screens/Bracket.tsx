@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { nanoid } from 'nanoid'
 import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, selectRiders, selectHasGenderSplit } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { BracketTree } from '../components/BracketTree'
@@ -21,9 +22,11 @@ export function Bracket() {
   const riders = useEventStore(selectRiders)
   const hasGenderSplit = useEventStore(selectHasGenderSplit)
   const setCurrentRaceId = useEventStore((s) => s.setCurrentRaceId)
+  const advanceBracket = useEventStore((s) => s.advanceBracket)
   const setPhase = useEventStore((s) => s.setPhase)
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [freePairOpen, setFreePairOpen] = useState(false)
+  const [declaringWinner, setDeclaringWinner] = useState(false)
 
   const nextMatchM = findNextMatch(bracketM)
   const nextMatchF = findNextMatch(bracketF)
@@ -80,18 +83,43 @@ export function Bracket() {
 
         {/* Scrollable bracket area */}
         <div className="flex-1 overflow-y-auto px-8 pb-4">
-          {sections.map((sec, i) => (
-            <div key={sec.pool} className={i < sections.length - 1 ? 'mb-10' : ''}>
-              {sec.label && (
-                <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${
-                  sec.pool === 'M' ? 'text-blue-400' : sec.pool === 'F' ? 'text-pink-400' : 'text-stone-400'
-                }`}>
-                  {sec.label}
-                </div>
-              )}
-              <BracketTree rounds={sec.rounds} riders={riders} currentMatchId={nextMatch?.id} />
+          {/* Men + Women face each other in the centre */}
+          {bracketM.length > 0 && bracketF.length > 0 ? (
+            <div className={`flex items-start gap-0 ${bracketOpen.length > 0 ? 'mb-10' : ''}`}>
+              <div className="flex-1 min-w-0 overflow-x-auto">
+                <div className="text-xs font-bold uppercase tracking-widest mb-3 text-blue-400">Men</div>
+                <BracketTree rounds={bracketM} riders={riders} currentMatchId={nextMatch?.id} />
+              </div>
+              <div className="w-px self-stretch bg-stone-700 mx-4 shrink-0" />
+              <div className="flex-1 min-w-0 overflow-x-auto">
+                <div className="text-xs font-bold uppercase tracking-widest mb-3 text-pink-400 text-right">Women</div>
+                <BracketTree rounds={bracketF} riders={riders} currentMatchId={nextMatch?.id} mirrored />
+              </div>
             </div>
-          ))}
+          ) : (
+            sections.filter((s) => s.pool !== 'Open').map((sec, i) => (
+              <div key={sec.pool} className={i < sections.length - 1 ? 'mb-10' : ''}>
+                {sec.label && (
+                  <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${
+                    sec.pool === 'M' ? 'text-blue-400' : sec.pool === 'F' ? 'text-pink-400' : 'text-stone-400'
+                  }`}>
+                    {sec.label}
+                  </div>
+                )}
+                <BracketTree rounds={sec.rounds} riders={riders} currentMatchId={nextMatch?.id} />
+              </div>
+            ))
+          )}
+
+          {/* Open bracket always below */}
+          {bracketOpen.length > 0 && (
+            <div>
+              {hasGenderSplit && (
+                <div className="text-xs font-bold uppercase tracking-widest mb-3 text-stone-400">Open</div>
+              )}
+              <BracketTree rounds={bracketOpen} riders={riders} currentMatchId={nextMatch?.id} />
+            </div>
+          )}
         </div>
 
         {/* Bottom action */}
@@ -109,12 +137,53 @@ export function Bracket() {
                 {' vs '}
                 <strong className="text-white">{bottomName}</strong>
               </div>
-              <button
-                onClick={handleStartMatch}
-                className="px-16 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
-              >
-                Start Race →
-              </button>
+
+              {declaringWinner ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="text-stone-500 text-sm uppercase tracking-widest">Declare winner</div>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => {
+                        advanceBracket(nextMatch.id, nextMatch.topRiderId!, nanoid(), nextPool)
+                        setDeclaringWinner(false)
+                      }}
+                      className="px-10 py-3 bg-stone-700 hover:bg-stone-600 text-white text-lg font-bold tracking-widest uppercase rounded-lg transition-colors"
+                    >
+                      {topName}
+                    </button>
+                    <button
+                      onClick={() => {
+                        advanceBracket(nextMatch.id, nextMatch.bottomRiderId!, nanoid(), nextPool)
+                        setDeclaringWinner(false)
+                      }}
+                      className="px-10 py-3 bg-stone-700 hover:bg-stone-600 text-white text-lg font-bold tracking-widest uppercase rounded-lg transition-colors"
+                    >
+                      {bottomName}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setDeclaringWinner(false)}
+                    className="text-stone-600 hover:text-stone-400 text-sm uppercase tracking-widest transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleStartMatch}
+                    className="px-16 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
+                  >
+                    Start Race →
+                  </button>
+                  <button
+                    onClick={() => setDeclaringWinner(true)}
+                    className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 hover:border-stone-500 rounded px-3 py-1.5 uppercase tracking-widest transition-colors"
+                  >
+                    Declare Winner
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <button

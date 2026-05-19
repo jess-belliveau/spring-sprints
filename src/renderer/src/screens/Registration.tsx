@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid'
 import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket, selectBracketF, selectBracketOpen } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
+import { CustomBracketModal } from '../components/CustomBracketModal'
 import { BRACKET_SIZE } from '@shared/constants'
 
 const GENDER_BTN = (active: boolean, color: string) =>
@@ -22,6 +23,7 @@ export function Registration() {
   const setRiderGender = useEventStore((s) => s.setRiderGender)
   const setPhase = useEventStore((s) => s.setPhase)
   const generateBracket = useEventStore((s) => s.generateBracket)
+  const generateCustomBracket = useEventStore((s) => s.generateCustomBracket)
   const reset = useEventStore((s) => s.reset)
 
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
@@ -30,6 +32,7 @@ export function Registration() {
   const [error, setError] = useState('')
   const [confirmNewEvent, setConfirmNewEvent] = useState(false)
   const [freePairOpen, setFreePairOpen] = useState(false)
+  const [customBracketOpen, setCustomBracketOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const hasBracket = bracketM.length > 0 || bracketF.length > 0 || bracketOpen.length > 0
@@ -199,6 +202,13 @@ export function Registration() {
           Free Pair Race
         </button>
 
+        <button
+          onClick={() => setCustomBracketOpen(true)}
+          className="w-full py-3 rounded-lg border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white text-sm font-bold tracking-widest uppercase transition-colors"
+        >
+          Custom Bracket
+        </button>
+
         {!confirmNewEvent ? (
           <button
             onClick={() => setConfirmNewEvent(true)}
@@ -229,6 +239,16 @@ export function Registration() {
       <FreePairModal
         onClose={() => setFreePairOpen(false)}
         onStart={handleFreePairStart}
+      />
+    )}
+
+    {customBracketOpen && (
+      <CustomBracketModal
+        onClose={() => setCustomBracketOpen(false)}
+        onGenerate={(names) => {
+          setCustomBracketOpen(false)
+          generateCustomBracket(names)
+        }}
       />
     )}
     </>
