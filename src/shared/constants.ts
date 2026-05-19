@@ -1,5 +1,8 @@
 export const DEFAULT_DISTANCE_METRES = 250
 
+export const DEMO_DEVICE_IDS = ['demo-trainer-1', 'demo-trainer-2'] as const
+export type DemoDeviceId = (typeof DEMO_DEVICE_IDS)[number]
+
 export const FTMS_SERVICE_UUID = '1826'
 export const INDOOR_BIKE_DATA_UUID = '2ad2'
 

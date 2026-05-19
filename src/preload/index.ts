@@ -21,6 +21,9 @@ const electronAPI = {
   raceGo: () => ipcRenderer.invoke(IPC.RACE_GO),
   stopRace: () => ipcRenderer.invoke(IPC.RACE_STOP),
 
+  // ── Dev ───────────────────────────────────────────────────────────────────
+  setDemoStopped: (id: string, stopped: boolean) => ipcRenderer.invoke(IPC.DEMO_SET_STOPPED, { id, stopped }),
+
   // ── Event ─────────────────────────────────────────────────────────────────
   loadEvent: () => ipcRenderer.invoke(IPC.EVENT_LOAD) as Promise<EventData | null>,
   saveEvent: (event: EventData) => ipcRenderer.invoke(IPC.EVENT_SAVE, event),

@@ -6,7 +6,7 @@ import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
-import { BRACKET_SIZE } from '@shared/constants'
+import { BRACKET_SIZE, DEMO_DEVICE_IDS } from '@shared/constants'
 import { WattBomber } from '../components/WattBomber'
 import type { RaceResult, LaneResult, Rider } from '@shared/types'
 
@@ -41,6 +41,8 @@ export function Qualifying() {
 
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
   const leftReady = connectedDevices['left']?.status === 'connected'
+  const rightReady = connectedDevices['right']?.status === 'connected'
+  const bothConnected = leftReady && rightReady
 
   const { playCountdownBeep, playFinishFanfare } = useAudio()
 
@@ -55,6 +57,13 @@ export function Qualifying() {
   const [addError, setAddError] = useState('')
   const [countdownHeld, setCountdownHeld] = useState(false)
   const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
+  const [demoStopped, setDemoStopped] = useState<Record<string, boolean>>({})
+
+  function toggleDemoDevice(id: string) {
+    const next = !demoStopped[id]
+    setDemoStopped((prev) => ({ ...prev, [id]: next }))
+    window.electronAPI.setDemoStopped(id, next)
+  }
 
   const raceIdRef = useRef<string>('')
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -66,6 +75,22 @@ export function Qualifying() {
   falseStartEnabledRef.current = falseStartEnabled
   const wattsHoldRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
+  const DETECT_THRESHOLD = 30
+  const DETECT_SUSTAIN_MS = 2000
+
+  // Lane detection state
+  const raceLaneRef = useRef<'left' | 'right'>('left')
+  const [isDetecting, setIsDetecting] = useState(false)
+  const isDetectingRef = useRef(false)
+  isDetectingRef.current = isDetecting
+  const [detectedLane, setDetectedLane] = useState<'left' | 'right' | null>(null)
+  const detectionCalledRef = useRef(false)
+  const leftDetectWattsRef = useRef<HTMLSpanElement>(null)
+  const rightDetectWattsRef = useRef<HTMLSpanElement>(null)
+  const leftProgressRef = useRef<HTMLDivElement>(null)
+  const rightProgressRef = useRef<HTMLDivElement>(null)
+  const leftAboveSinceRef = useRef(0)
+  const rightAboveSinceRef = useRef(0)
 
   const anyGender = riders.some((r) => r.gender)
   const availablePools: LbPool[] = []
@@ -88,14 +113,41 @@ export function Qualifying() {
     })
   }
 
-  // Non-reactive: false-start detection + watts display
+  // Non-reactive: lane detection + false-start detection
+  const handleLaneDetectedRef = useRef<((lane: 'left' | 'right') => void) | null>(null)
   useEffect(() => {
     return useRaceStore.subscribe((state) => {
-      const watts = state.race?.left?.instantWatts ?? 0
+      const lw = state.race?.left?.instantWatts ?? 0
+      const rw = state.race?.right?.instantWatts ?? 0
+
+      if (isDetectingRef.current) {
+        if (leftDetectWattsRef.current) leftDetectWattsRef.current.textContent = String(lw)
+        if (rightDetectWattsRef.current) rightDetectWattsRef.current.textContent = String(rw)
+        if (!detectionCalledRef.current) {
+          const now = Date.now()
+          if (lw > DETECT_THRESHOLD) { if (!leftAboveSinceRef.current) leftAboveSinceRef.current = now }
+          else leftAboveSinceRef.current = 0
+          if (rw > DETECT_THRESHOLD) { if (!rightAboveSinceRef.current) rightAboveSinceRef.current = now }
+          else rightAboveSinceRef.current = 0
+          const leftPct = leftAboveSinceRef.current ? Math.min(100, (now - leftAboveSinceRef.current) / DETECT_SUSTAIN_MS * 100) : 0
+          const rightPct = rightAboveSinceRef.current ? Math.min(100, (now - rightAboveSinceRef.current) / DETECT_SUSTAIN_MS * 100) : 0
+          if (leftProgressRef.current) leftProgressRef.current.style.width = `${leftPct}%`
+          if (rightProgressRef.current) rightProgressRef.current.style.width = `${rightPct}%`
+          const leftSustained = leftAboveSinceRef.current > 0 && now - leftAboveSinceRef.current >= DETECT_SUSTAIN_MS
+          const rightSustained = rightAboveSinceRef.current > 0 && now - rightAboveSinceRef.current >= DETECT_SUSTAIN_MS
+          const det = leftSustained ? 'left' : rightSustained ? 'right' : null
+          if (det) {
+            detectionCalledRef.current = true
+            handleLaneDetectedRef.current?.(det)
+          }
+        }
+        return
+      }
+
       const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
-      const shouldHold = falseStartEnabledRef.current && isCountdown && watts > WATT_THRESHOLD
+      const shouldHold = falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
       heldRef.current = shouldHold
-      if (wattsHoldRef.current) wattsHoldRef.current.textContent = String(watts)
+      if (wattsHoldRef.current) wattsHoldRef.current.textContent = String(raceLaneRef.current === 'left' ? lw : rw)
       setCountdownHeld((prev) => (prev === shouldHold ? prev : shouldHold))
     })
   }, [])
@@ -111,23 +163,28 @@ export function Qualifying() {
 
   useEffect(() => {
     const unsub = window.electronAPI.onRaceFinished(({ lane, result }) => {
-      if (lane !== 'left') return
+      if (lane !== raceLaneRef.current) return
       if (!currentRiderRef.current) return
       const laneResult = { ...result, riderId: currentRiderRef.current.id }
-      setLaneFinished('left', laneResult)
+      setLaneFinished(raceLaneRef.current, laneResult)
       setFinishResult(laneResult)
     })
     return unsub
   }, [setLaneFinished])
 
-  function startRace() {
-    if (!currentRider) return
+  function startRaceOnLane(lane: 'left' | 'right') {
+    if (!currentRiderRef.current) return
+    raceLaneRef.current = lane
     finishHandledRef.current = false
     setShowResult(false)
     const raceId = nanoid()
     raceIdRef.current = raceId
-    initRace(raceId, { riderId: currentRider.id, riderName: currentRider.name }, null)
-    window.electronAPI.startRace(raceId, config.distanceMetres, ['left'])
+    initRace(
+      raceId,
+      lane === 'left' ? { riderId: currentRiderRef.current.id, riderName: currentRiderRef.current.name } : null,
+      lane === 'right' ? { riderId: currentRiderRef.current.id, riderName: currentRiderRef.current.name } : null
+    )
+    window.electronAPI.startRace(raceId, config.distanceMetres, [lane])
 
     let count = 3
     setCountdown(count)
@@ -151,20 +208,57 @@ export function Qualifying() {
     countdownRef.current = setTimeout(tick, 1000)
   }
 
+  // Updated every render so the subscription callback always has the latest version
+  handleLaneDetectedRef.current = (lane: 'left' | 'right') => {
+    window.electronAPI.stopRace()
+    resetRace()
+    setIsDetecting(false)
+    detectionCalledRef.current = false
+    leftAboveSinceRef.current = 0
+    rightAboveSinceRef.current = 0
+    setDetectedLane(lane)
+    startRaceOnLane(lane)
+  }
+
+  function startRace() {
+    if (!currentRider) return
+    if (bothConnected && detectedLane === null) {
+      // Set ref immediately — before IPC fires — so the subscription sees detecting=true
+      // even if telemetry arrives before React re-renders the state change.
+      detectionCalledRef.current = false
+      leftAboveSinceRef.current = 0
+      rightAboveSinceRef.current = 0
+      isDetectingRef.current = true
+      setIsDetecting(true)
+      const detId = nanoid()
+      raceIdRef.current = detId
+      initRace(detId,
+        { riderId: currentRider.id, riderName: currentRider.name },
+        { riderId: '_det', riderName: '' }
+      )
+      window.electronAPI.startRace(detId, config.distanceMetres, ['left', 'right'])
+    } else {
+      startRaceOnLane(detectedLane ?? (leftReady ? 'left' : 'right'))
+    }
+  }
+
   function saveAndAdvance() {
     if (!finishResult || !currentRider) return
+    const lane = raceLaneRef.current
     const raceResult: RaceResult = {
       raceId: raceIdRef.current,
       type: 'qualifying',
       startedAt: Date.now(),
-      left: finishResult,
-      right: null
+      left: lane === 'left' ? finishResult : null,
+      right: lane === 'right' ? finishResult : null
     }
     addQualifyingResult(raceResult)
     resetRace()
     setFinishResult(null)
     setShowResult(false)
     finishHandledRef.current = false
+    setDetectedLane(null)
+    raceLaneRef.current = 'left'
   }
 
   function handleAddRider() {
@@ -182,10 +276,16 @@ export function Qualifying() {
   function handleAbort() {
     if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
     finishHandledRef.current = false
+    detectionCalledRef.current = false
+    leftAboveSinceRef.current = 0
+    rightAboveSinceRef.current = 0
     window.electronAPI.stopRace()
     resetRace()
     setFinishResult(null)
     setShowResult(false)
+    setIsDetecting(false)
+    setDetectedLane(null)
+    raceLaneRef.current = 'left'
   }
 
   useEffect(() => () => { if (countdownRef.current) clearTimeout(countdownRef.current) }, [])
@@ -226,6 +326,20 @@ export function Qualifying() {
               >
                 False Start {falseStartEnabled ? 'ON' : 'OFF'}
               </button>
+              {DEMO_DEVICE_IDS.map((id, i) => (
+                <button
+                  key={id}
+                  onClick={() => toggleDemoDevice(id)}
+                  className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                    demoStopped[id]
+                      ? 'text-orange-400 border-orange-700 bg-orange-950/40'
+                      : 'text-stone-600 border-stone-700'
+                  }`}
+                  title={`Freeze demo trainer ${i + 1} at 0W (dev only)`}
+                >
+                  T{i + 1} {demoStopped[id] ? 'STOP' : 'LIVE'}
+                </button>
+              ))}
               <button
                 disabled={!currentRider || isActive || showResult}
                 onClick={() => {
@@ -326,12 +440,17 @@ export function Qualifying() {
                     {currentRider.gender === 'M' ? 'Men' : 'Women'}
                   </div>
                 )}
-                {!leftReady && (
-                  <div className="text-amber-400 text-sm uppercase tracking-widest">Left lane not connected</div>
+                {detectedLane && bothConnected && (
+                  <div className={`text-sm font-bold uppercase tracking-widest ${detectedLane === 'left' ? 'text-[var(--lane-left)]' : 'text-[var(--lane-right)]'}`}>
+                    {detectedLane === 'left' ? 'Left' : 'Right'} bike
+                  </div>
+                )}
+                {!leftReady && !rightReady && (
+                  <div className="text-amber-400 text-sm uppercase tracking-widest">No devices connected</div>
                 )}
                 <button
                   onClick={startRace}
-                  disabled={!leftReady}
+                  disabled={!leftReady && !rightReady}
                   className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   START RACE
@@ -354,17 +473,54 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && (
+          {isActive && !isDetecting && (
             <div className="absolute inset-0 flex">
               <TrackDisplay
-                left={currentRider ? { riderName: currentRider.name } : null}
-                right={null}
+                left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
+                right={raceLaneRef.current === 'right' && currentRider ? { riderName: currentRider.name } : null}
                 targetDistance={config.distanceMetres}
               />
             </div>
           )}
 
-          {isActive && raceStatus === 'countdown' && !countdownHeld && (
+          {isDetecting && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/70">
+              <div className="flex flex-col items-center gap-6">
+                <div className="text-white text-4xl font-black uppercase tracking-widest">Which bike?</div>
+                <div className="text-stone-400 text-lg">Pedal steadily above 30W for 2 seconds</div>
+                <div className="flex gap-16 mt-2">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-xs uppercase tracking-widest font-bold" style={{ color: 'var(--lane-left)' }}>Left</div>
+                    <div className="text-4xl font-black tabular-nums" style={{ color: 'var(--lane-left)' }}>
+                      <span ref={leftDetectWattsRef}>0</span>
+                      <span className="text-xl text-stone-500"> W</span>
+                    </div>
+                    <div className="w-36 h-2 bg-stone-800 rounded-full overflow-hidden">
+                      <div ref={leftProgressRef} className="h-full rounded-full" style={{ width: '0%', backgroundColor: 'var(--lane-left)', transition: 'none' }} />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-xs uppercase tracking-widest font-bold" style={{ color: 'var(--lane-right)' }}>Right</div>
+                    <div className="text-4xl font-black tabular-nums" style={{ color: 'var(--lane-right)' }}>
+                      <span ref={rightDetectWattsRef}>0</span>
+                      <span className="text-xl text-stone-500"> W</span>
+                    </div>
+                    <div className="w-36 h-2 bg-stone-800 rounded-full overflow-hidden">
+                      <div ref={rightProgressRef} className="h-full rounded-full" style={{ width: '0%', backgroundColor: 'var(--lane-right)', transition: 'none' }} />
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAbort}
+                  className="mt-2 text-sm text-stone-600 hover:text-stone-400 uppercase tracking-widest transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isActive && !isDetecting && raceStatus === 'countdown' && !countdownHeld && (
             <Countdown value={countdownValue} />
           )}
 

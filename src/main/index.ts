@@ -51,7 +51,7 @@ app.whenReady().then(async () => {
   bluetoothManager = new BluetoothManager(() => mainWindow, is.dev)
 
   createWindow()
-  registerIpcHandlers(bluetoothManager, appStore, () => mainWindow)
+  registerIpcHandlers(bluetoothManager, appStore, () => mainWindow, is.dev)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

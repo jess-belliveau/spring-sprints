@@ -248,6 +248,11 @@ export class BluetoothManager extends EventEmitter {
     this.raceWatchers.clear()
   }
 
+  setDemoStopped(id: string, stopped: boolean): void {
+    const device = this.demoDevices.get(id)
+    if (device) (device as import('./demo-device').DemoDevice).setStopped(stopped)
+  }
+
   private handleDeviceData(lane: Lane, data: import('../../shared/types').IndoorBikeData): void {
     const watcher = this.raceWatchers.get(lane)
     if (!watcher || watcher.finished || !this.currentRaceId) return

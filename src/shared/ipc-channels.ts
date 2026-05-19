@@ -12,6 +12,8 @@ export const IPC = {
   EVENT_CLEAR: 'event:clear',
   EVENT_EXPORT_CSV: 'event:export-csv',
 
+  DEMO_SET_STOPPED: 'demo:set-stopped',
+
   // Main → Renderer (send/on)
   BLUETOOTH_DEVICE_FOUND: 'bluetooth:device-found',
   BLUETOOTH_DEVICE_CONNECTED: 'bluetooth:device-connected',
