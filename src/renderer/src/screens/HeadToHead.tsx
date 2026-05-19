@@ -187,17 +187,33 @@ export function HeadToHead() {
         </span>
         <div className="flex items-center gap-3">
           {import.meta.env.DEV && (
-            <button
-              onClick={() => setFalseStartEnabled((v) => !v)}
-              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-                falseStartEnabled
-                  ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
-                  : 'text-stone-600 border-stone-700'
-              }`}
-              title="Toggle false-start detection (dev only)"
-            >
-              False Start {falseStartEnabled ? 'ON' : 'OFF'}
-            </button>
+            <>
+              <button
+                onClick={() => setFalseStartEnabled((v) => !v)}
+                className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                  falseStartEnabled
+                    ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                    : 'text-stone-600 border-stone-700'
+                }`}
+                title="Toggle false-start detection (dev only)"
+              >
+                False Start {falseStartEnabled ? 'ON' : 'OFF'}
+              </button>
+              {isIdle && (
+                <button
+                  onClick={() => {
+                    if (!leftRider || !rightRider || !currentMatch) return
+                    const winnerId = Math.random() < 0.5 ? leftRider.id : rightRider.id
+                    advanceBracket(currentMatch.id, winnerId, nanoid(), matchPoolRef.current)
+                    resetRace()
+                    setPhase('bracket')
+                  }}
+                  className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+                >
+                  ⚡ Sim
+                </button>
+              )}
+            </>
           )}
           {!isIdle && !isFinished && (
             <button

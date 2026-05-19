@@ -214,17 +214,49 @@ export function Qualifying() {
         </div>
         <div className="flex items-center gap-3">
           {import.meta.env.DEV && (
-            <button
-              onClick={() => setFalseStartEnabled((v) => !v)}
-              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-                falseStartEnabled
-                  ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
-                  : 'text-stone-600 border-stone-700'
-              }`}
-              title="Toggle false-start detection (dev only)"
-            >
-              False Start {falseStartEnabled ? 'ON' : 'OFF'}
-            </button>
+            <>
+              <button
+                onClick={() => setFalseStartEnabled((v) => !v)}
+                className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                  falseStartEnabled
+                    ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                    : 'text-stone-600 border-stone-700'
+                }`}
+                title="Toggle false-start detection (dev only)"
+              >
+                False Start {falseStartEnabled ? 'ON' : 'OFF'}
+              </button>
+              <button
+                disabled={!currentRider || isActive || showResult}
+                onClick={() => {
+                  if (!currentRider) return
+                  addQualifyingResult({
+                    raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                    left: { riderId: currentRider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                    right: null
+                  })
+                }}
+                className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+              >
+                ⚡ Sim
+              </button>
+              <button
+                disabled={remaining.length === 0 || isActive}
+                onClick={() => {
+                  remaining.forEach((rider) => {
+                    addQualifyingResult({
+                      raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                      left: { riderId: rider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                      right: null
+                    })
+                  })
+                  setPhase('qualifying-results')
+                }}
+                className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+              >
+                ⚡ Sim All
+              </button>
+            </>
           )}
           {isLive ? (
             <button
