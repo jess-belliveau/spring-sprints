@@ -24,7 +24,7 @@ export function HeadToHead() {
   const resetRace = useRaceStore((s) => s.resetRace)
 
   const { playCountdownBeep, playFinishFanfare } = useAudio()
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const internalRaceIdRef = useRef<string>('')
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
@@ -48,7 +48,7 @@ export function HeadToHead() {
     return useRaceStore.subscribe((state) => {
       const lw = state.race?.left?.instantWatts ?? 0
       const rw = state.race?.right?.instantWatts ?? 0
-      const isCountdown = state.race?.status === 'countdown'
+      const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
       const shouldHold = falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
       heldRef.current = shouldHold
       if (leftWattsSpanRef.current) leftWattsSpanRef.current.style.display = lw > WATT_THRESHOLD ? '' : 'none'
@@ -103,16 +103,24 @@ export function HeadToHead() {
 
     let count = 3
     setCountdown(count)
-    countdownRef.current = setInterval(() => {
-      if (heldRef.current) return // false start — hold this tick
+    let lastAt = performance.now()
+    let wasHeld = false
+    function tick() {
+      if (heldRef.current) { wasHeld = true; countdownRef.current = setTimeout(tick, 100); return }
       count -= 1
-      if (count >= 0) { setCountdown(count); playCountdownBeep(count) }
-      if (count < 0) {
-        clearInterval(countdownRef.current!)
+      const now = performance.now()
+      const drift = wasHeld ? 0 : now - lastAt - 1000
+      wasHeld = false; lastAt = now
+      if (count > 0) {
+        setCountdown(count); playCountdownBeep(count)
+        countdownRef.current = setTimeout(tick, Math.max(0, 1000 - drift))
+      } else {
+        setCountdown(0); playCountdownBeep(0)
         window.electronAPI.raceGo()
-        setRacing()
+        countdownRef.current = setTimeout(() => setRacing(), 800)
       }
-    }, 1000)
+    }
+    countdownRef.current = setTimeout(tick, 1000)
   }
 
   function handleBackToBracket() {
@@ -122,7 +130,7 @@ export function HeadToHead() {
 
   function handleAbort() {
     if (countdownRef.current) {
-      clearInterval(countdownRef.current)
+      clearTimeout(countdownRef.current)
       countdownRef.current = null
     }
     fanfarePlayed.current = false
@@ -132,7 +140,7 @@ export function HeadToHead() {
     setPhase('bracket')
   }
 
-  useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current) }, [])
+  useEffect(() => () => { if (countdownRef.current) clearTimeout(countdownRef.current) }, [])
 
   if (!currentMatch || !leftRider || !rightRider) {
     return (
