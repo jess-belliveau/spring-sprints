@@ -28,6 +28,7 @@ export function Qualifying() {
   const existingResults = useEventStore(selectQualifyingResults)
   const addQualifyingResult = useEventStore((s) => s.addQualifyingResult)
   const removeQualifyingResult = useEventStore((s) => s.removeQualifyingResult)
+  const moveRiderToEnd = useEventStore((s) => s.moveRiderToEnd)
   const addRider = useEventStore((s) => s.addRider)
   const setPhase = useEventStore((s) => s.setPhase)
 
@@ -311,6 +312,19 @@ export function Qualifying() {
       right: lane === 'right' ? finishResult : null
     }
     addQualifyingResult(raceResult)
+    resetRace()
+    setFinishResult(null)
+    setShowResult(false)
+    finishHandledRef.current = false
+    setDetectedLane(null)
+    raceLaneRef.current = 'left'
+    setIsFalseStart(false)
+    falseStartFiredRef.current = false
+  }
+
+  function handleRetry() {
+    if (!currentRider) return
+    moveRiderToEnd(currentRider.id)
     resetRace()
     setFinishResult(null)
     setShowResult(false)
@@ -647,6 +661,12 @@ export function Qualifying() {
                   className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
                 >
                   {remaining.length <= 1 ? 'See Results →' : 'Next Rider →'}
+                </button>
+                <button
+                  onClick={handleRetry}
+                  className="text-stone-500 hover:text-stone-300 text-sm uppercase tracking-widest transition-colors"
+                >
+                  ↺ Retry (go to end of queue)
                 </button>
               </div>
             </div>

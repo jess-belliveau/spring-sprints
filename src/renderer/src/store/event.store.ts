@@ -24,6 +24,7 @@ interface EventState {
   setRiderGender: (riderId: string, gender: 'M' | 'F') => void
   addQualifyingResult: (result: RaceResult) => void
   removeQualifyingResult: (riderId: string) => void
+  moveRiderToEnd: (riderId: string) => void
   generateBracket: () => void
   generateCustomBracket: (names: string[]) => void
   advanceBracket: (matchId: string, winnerId: string, raceResultId: string, pool: BracketPool) => void
@@ -228,6 +229,17 @@ export const useEventStore = create<EventState>((set, _get) => ({
         (r) => r.left?.riderId !== riderId && r.right?.riderId !== riderId
       )
       const event = { ...s.event, qualifyingResults }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
+  moveRiderToEnd: (riderId) =>
+    set((s) => {
+      if (!s.event) return s
+      const rider = s.event.riders.find((r) => r.id === riderId)
+      if (!rider) return s
+      const riders = [...s.event.riders.filter((r) => r.id !== riderId), rider]
+      const event = { ...s.event, riders }
       window.electronAPI.saveEvent(event)
       return { event }
     }),

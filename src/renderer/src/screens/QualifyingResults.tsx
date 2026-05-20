@@ -85,8 +85,8 @@ export function QualifyingResults() {
           </div>
           <h2 className="text-4xl font-black uppercase tracking-widest text-white text-center -mt-2">Qualifying Results</h2>
           <div className="flex-1 flex gap-8 min-h-0">
-            <div className="flex-1 overflow-y-auto">
-              <Leaderboard rows={allRows} advanceCount={advanceCount} onRetry={handleRetry} />
+            <div className="flex-1 min-h-0">
+              <Leaderboard rows={allRows} advanceCount={advanceCount} onRetry={handleRetry} fill />
             </div>
             <div className="w-56 shrink-0 flex flex-col gap-3">
               <div className="text-xs text-stone-500 uppercase tracking-widest">Watt Bomber</div>
@@ -126,10 +126,10 @@ export function QualifyingResults() {
                 <span className="text-green-400 ml-2 font-normal">top {BRACKET_SIZE} advance</span>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0">
               {col.rows.length === 0
                 ? <p className="text-stone-700 text-sm text-center py-6">No results yet</p>
-                : <Leaderboard rows={col.rows} advanceCount={col.advance} onRetry={handleRetry} />
+                : <Leaderboard rows={col.rows} advanceCount={col.advance} onRetry={handleRetry} fill />
               }
             </div>
             <div className="shrink-0 border-t border-stone-800 pt-3">

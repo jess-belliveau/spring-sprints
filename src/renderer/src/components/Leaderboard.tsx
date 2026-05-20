@@ -10,6 +10,7 @@ interface Props {
   rows: Row[]
   advanceCount?: number
   onRetry?: (riderId: string) => void
+  fill?: boolean
 }
 
 function formatTime(ms: number): string {
@@ -20,10 +21,10 @@ function formatTime(ms: number): string {
   return `${min}:${String(sec).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`
 }
 
-export function Leaderboard({ rows, advanceCount, onRetry }: Props) {
+export function Leaderboard({ rows, advanceCount, onRetry, fill }: Props) {
   return (
-    <div className="w-full">
-      <div className="flex flex-col gap-1">
+    <div className={`w-full${fill ? ' h-full' : ''}`}>
+      <div className={`flex flex-col gap-1${fill ? ' h-full' : ''}`}>
         {rows.map(({ seed, rider, result }, i) => {
           const laneResult = result.left ?? result.right
           const advances = advanceCount !== undefined && i < advanceCount
@@ -31,7 +32,7 @@ export function Leaderboard({ rows, advanceCount, onRetry }: Props) {
           return (
             <div
               key={rider.id}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${advances ? 'bg-green-950 border border-green-800' : 'bg-stone-900'}`}
+              className={`flex items-center gap-3 rounded-lg px-4 ${fill ? 'flex-1 min-h-0' : 'py-3'} ${advances ? 'bg-green-950 border border-green-800' : 'bg-stone-900'}`}
             >
               <span className={`text-2xl font-bold w-8 shrink-0 ${advances ? 'text-green-400' : 'text-stone-500'}`}>
                 {seed}
