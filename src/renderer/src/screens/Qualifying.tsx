@@ -91,6 +91,13 @@ export function Qualifying() {
   const rightProgressRef = useRef<HTMLDivElement>(null)
   const leftAboveSinceRef = useRef(0)
   const rightAboveSinceRef = useRef(0)
+  const [isAwaitingStop, setIsAwaitingStop] = useState(false)
+  const isAwaitingStopRef = useRef(false)
+  isAwaitingStopRef.current = isAwaitingStop
+  const awaitingStopLaneRef = useRef<'left' | 'right' | null>(null)
+  const belowThresholdSinceRef = useRef(0)
+  const awaitingStopWattsRef = useRef<HTMLSpanElement>(null)
+  const awaitingStopReadyRef = useRef<((lane: 'left' | 'right') => void) | null>(null)
 
   const anyGender = riders.some((r) => r.gender)
   const availablePools: LbPool[] = []
@@ -144,6 +151,21 @@ export function Qualifying() {
         return
       }
 
+      if (isAwaitingStopRef.current) {
+        const detLane = awaitingStopLaneRef.current!
+        const detWatts = detLane === 'left' ? lw : rw
+        if (awaitingStopWattsRef.current) awaitingStopWattsRef.current.textContent = String(detWatts)
+        if (detWatts > WATT_THRESHOLD) {
+          belowThresholdSinceRef.current = 0
+        } else {
+          if (!belowThresholdSinceRef.current) belowThresholdSinceRef.current = Date.now()
+          if (Date.now() - belowThresholdSinceRef.current >= 2000) {
+            awaitingStopReadyRef.current?.(detLane)
+          }
+        }
+        return
+      }
+
       const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
       const shouldHold = falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
       heldRef.current = shouldHold
@@ -188,6 +210,7 @@ export function Qualifying() {
 
     let count = 3
     setCountdown(count)
+    playCountdownBeep(count)
     let lastAt = performance.now()
     let wasHeld = false
     function tick() {
@@ -210,14 +233,24 @@ export function Qualifying() {
 
   // Updated every render so the subscription callback always has the latest version
   handleLaneDetectedRef.current = (lane: 'left' | 'right') => {
-    window.electronAPI.stopRace()
-    resetRace()
     isDetectingRef.current = false  // mirror of startRace(); prevents re-detection from in-flight telemetry before React re-renders
     setIsDetecting(false)
     detectionCalledRef.current = false
     leftAboveSinceRef.current = 0
     rightAboveSinceRef.current = 0
+    // Keep detection monitoring running so we can read live watts during the stop phase
+    awaitingStopLaneRef.current = lane
+    belowThresholdSinceRef.current = 0
+    isAwaitingStopRef.current = true
+    setIsAwaitingStop(true)
     setDetectedLane(lane)
+  }
+
+  awaitingStopReadyRef.current = (lane: 'left' | 'right') => {
+    isAwaitingStopRef.current = false
+    setIsAwaitingStop(false)
+    window.electronAPI.stopRace()
+    resetRace()
     startRaceOnLane(lane)
   }
 
@@ -280,11 +313,15 @@ export function Qualifying() {
     detectionCalledRef.current = false
     leftAboveSinceRef.current = 0
     rightAboveSinceRef.current = 0
+    isAwaitingStopRef.current = false
+    belowThresholdSinceRef.current = 0
+    awaitingStopLaneRef.current = null
     window.electronAPI.stopRace()
     resetRace()
     setFinishResult(null)
     setShowResult(false)
     setIsDetecting(false)
+    setIsAwaitingStop(false)
     setDetectedLane(null)
     raceLaneRef.current = 'left'
   }
@@ -474,13 +511,35 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && !isDetecting && (
+          {isActive && !isDetecting && !isAwaitingStop && (
             <div className="absolute inset-0 flex">
               <TrackDisplay
                 left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
                 right={raceLaneRef.current === 'right' && currentRider ? { riderName: currentRider.name } : null}
                 targetDistance={config.distanceMetres}
               />
+            </div>
+          )}
+
+          {isAwaitingStop && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/70">
+              <div className="flex flex-col items-center gap-6">
+                <div className="text-white text-4xl font-black uppercase tracking-widest">Bike selected</div>
+                <div className="text-stone-400 text-lg">Stop pedalling to begin</div>
+                <div
+                  className="text-5xl font-black tabular-nums"
+                  style={{ color: detectedLane === 'left' ? 'var(--lane-left)' : 'var(--lane-right)' }}
+                >
+                  <span ref={awaitingStopWattsRef}>0</span>
+                  <span className="text-2xl text-stone-500"> W</span>
+                </div>
+                <button
+                  onClick={handleAbort}
+                  className="mt-2 text-sm text-stone-600 hover:text-stone-400 uppercase tracking-widest transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -521,7 +580,7 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && !isDetecting && raceStatus === 'countdown' && !countdownHeld && (
+          {isActive && !isDetecting && !isAwaitingStop && raceStatus === 'countdown' && !countdownHeld && (
             <Countdown value={countdownValue} />
           )}
 

@@ -120,6 +120,7 @@ export function HeadToHead() {
 
     let count = 3
     setCountdown(count)
+    playCountdownBeep(count)
     let lastAt = performance.now()
     let wasHeld = false
     function tick() {
