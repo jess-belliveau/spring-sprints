@@ -130,10 +130,8 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
         if (rightFinishedRef.current) rightFinishedRef.current.style.visibility = r.finished ? 'visible' : 'hidden'
       }
 
-      // Keep leads text content fresh; visibility is controlled by the RAF loop.
-      const absGap = Math.round(Math.abs(leftDist - rightDist))
-      if (leftLeadsRef.current)  leftLeadsRef.current.textContent  = `▲ LEADS +${absGap}m`
-      if (rightLeadsRef.current) rightLeadsRef.current.textContent = `▲ LEADS +${absGap}m`
+      if (leftLeadsRef.current)  leftLeadsRef.current.textContent  = '▲ LEADS'
+      if (rightLeadsRef.current) rightLeadsRef.current.textContent = '▲ LEADS'
     })
 
     // RAF loop drives arc and dot positions at 60fps via dead reckoning
@@ -211,9 +209,11 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
         if (rightGlowRef.current) rightGlowRef.current.style.display = 'none'
       }
 
-      // Leads label fades in as advantage grows
-      if (leftLeadsRef.current)  leftLeadsRef.current.style.opacity  = String(leftAdv)
-      if (rightLeadsRef.current) rightLeadsRef.current.style.opacity = String(rightAdv)
+      // Leads label appears only beyond a 10m gap, fades in over the next 2m
+      const leftLeadOpacity  = hb ? Math.min(1, Math.max(0, ( rawGap - 10) / 2)) : 0
+      const rightLeadOpacity = hb ? Math.min(1, Math.max(0, (-rawGap - 10) / 2)) : 0
+      if (leftLeadsRef.current)  leftLeadsRef.current.style.opacity  = String(leftLeadOpacity)
+      if (rightLeadsRef.current) rightLeadsRef.current.style.opacity = String(rightLeadOpacity)
 
       // Solo centre distance
       if (centreDistRef.current) {
@@ -241,7 +241,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
       {left && (
         <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
           <span ref={leftLeadsRef} className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase`} style={{ color: 'var(--lane-left)', opacity: 0 }}>
-            ▲ LEADS +0m
+            ▲ LEADS
           </span>
 
           <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase truncate`} style={{ color: 'var(--lane-left)' }}>
@@ -351,7 +351,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
       {right && (
         <div className="flex-1 flex flex-col items-start gap-2 min-w-0">
           <span ref={rightLeadsRef} className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase`} style={{ color: 'var(--lane-right)', opacity: 0 }}>
-            ▲ LEADS +0m
+            ▲ LEADS
           </span>
 
           <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase truncate`} style={{ color: 'var(--lane-right)' }}>

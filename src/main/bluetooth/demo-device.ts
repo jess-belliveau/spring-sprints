@@ -54,7 +54,7 @@ export class DemoDevice extends EventEmitter implements ITrainerDevice {
 
 export function createDemoDevices(): DemoDevice[] {
   return [
-    new DemoDevice('demo-trainer-1', 'Demo Trainer 1', 280, 92),
-    new DemoDevice('demo-trainer-2', 'Demo Trainer 2', 260, 88)
+    new DemoDevice('demo-trainer-1', 'Demo Trainer 1', 320, 96),
+    new DemoDevice('demo-trainer-2', 'Demo Trainer 2', 160, 72)
   ]
 }
