@@ -212,6 +212,7 @@ export function Qualifying() {
   handleLaneDetectedRef.current = (lane: 'left' | 'right') => {
     window.electronAPI.stopRace()
     resetRace()
+    isDetectingRef.current = false  // mirror of startRace(); prevents re-detection from in-flight telemetry before React re-renders
     setIsDetecting(false)
     detectionCalledRef.current = false
     leftAboveSinceRef.current = 0
