@@ -216,45 +216,45 @@ export function FinalResults() {
       </div>
 
       {wattBomber && (
-        <div className="flex items-center gap-5 border border-stone-700 rounded-xl px-8 py-4 mb-4">
-          <span className="text-2xl">⚡</span>
+        <div className="flex items-center gap-6 border border-stone-700 rounded-xl px-10 py-5 mb-4">
+          <span className="text-4xl">⚡</span>
           <div className="flex flex-col">
-            <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb</div>
-            <div className="text-2xl font-black text-white">{wattBomber.rider.name}</div>
+            <div className="text-amber-400 text-sm font-bold uppercase tracking-widest">Watt Bomb</div>
+            <div className="text-4xl font-black text-white">{wattBomber.rider.name}</div>
           </div>
-          <div className="text-3xl font-mono font-bold text-amber-400 ml-2">{wattBomber.maxWatts}W</div>
+          <div className="text-5xl font-mono font-bold text-amber-400 ml-2">{wattBomber.maxWatts}W</div>
         </div>
       )}
       {hasGenderSplit && (wattBomberM || wattBomberF || wattBomberOpen) && (
-        <div className="flex gap-4 flex-wrap justify-center mb-4">
+        <div className="flex gap-5 flex-wrap justify-center mb-4">
           {wattBomberM && (
-            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
-              <span className="text-xl">⚡</span>
+            <div className="flex items-center gap-5 border border-stone-700 rounded-xl px-8 py-4">
+              <span className="text-3xl">⚡</span>
               <div className="flex flex-col">
-                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-blue-400">Men</span></div>
-                <div className="text-xl font-black text-white">{wattBomberM.rider.name}</div>
+                <div className="text-amber-400 text-sm font-bold uppercase tracking-widest">Watt Bomb · <span className="text-blue-400">Men</span></div>
+                <div className="text-3xl font-black text-white">{wattBomberM.rider.name}</div>
               </div>
-              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberM.maxWatts}W</div>
+              <div className="text-4xl font-mono font-bold text-amber-400 ml-2">{wattBomberM.maxWatts}W</div>
             </div>
           )}
           {wattBomberF && (
-            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
-              <span className="text-xl">⚡</span>
+            <div className="flex items-center gap-5 border border-stone-700 rounded-xl px-8 py-4">
+              <span className="text-3xl">⚡</span>
               <div className="flex flex-col">
-                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-pink-400">Women</span></div>
-                <div className="text-xl font-black text-white">{wattBomberF.rider.name}</div>
+                <div className="text-amber-400 text-sm font-bold uppercase tracking-widest">Watt Bomb · <span className="text-pink-400">Women</span></div>
+                <div className="text-3xl font-black text-white">{wattBomberF.rider.name}</div>
               </div>
-              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberF.maxWatts}W</div>
+              <div className="text-4xl font-mono font-bold text-amber-400 ml-2">{wattBomberF.maxWatts}W</div>
             </div>
           )}
           {wattBomberOpen && (
-            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
-              <span className="text-xl">⚡</span>
+            <div className="flex items-center gap-5 border border-stone-700 rounded-xl px-8 py-4">
+              <span className="text-3xl">⚡</span>
               <div className="flex flex-col">
-                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-stone-400">Open</span></div>
-                <div className="text-xl font-black text-white">{wattBomberOpen.rider.name}</div>
+                <div className="text-amber-400 text-sm font-bold uppercase tracking-widest">Watt Bomb · <span className="text-stone-400">Open</span></div>
+                <div className="text-3xl font-black text-white">{wattBomberOpen.rider.name}</div>
               </div>
-              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberOpen.maxWatts}W</div>
+              <div className="text-4xl font-mono font-bold text-amber-400 ml-2">{wattBomberOpen.maxWatts}W</div>
             </div>
           )}
         </div>
