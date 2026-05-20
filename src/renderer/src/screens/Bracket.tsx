@@ -6,10 +6,10 @@ import { BracketTree } from '../components/BracketTree'
 import { FreePairModal } from '../components/FreePairModal'
 import type { BracketMatch, BracketRound, BracketPool } from '@shared/types'
 
-function findNextMatch(rounds: BracketRound[]): BracketMatch | null {
-  for (const round of rounds) {
-    for (const match of round.matches) {
-      if (!match.winnerId && match.topRiderId && match.bottomRiderId) return match
+function findNextMatchByRound(rounds: BracketRound[]): { match: BracketMatch; round: number } | null {
+  for (let r = 0; r < rounds.length; r++) {
+    for (const match of rounds[r].matches) {
+      if (!match.winnerId && match.topRiderId && match.bottomRiderId) return { match, round: r }
     }
   }
   return null
@@ -28,13 +28,18 @@ export function Bracket() {
   const [freePairOpen, setFreePairOpen] = useState(false)
   const [declaringWinner, setDeclaringWinner] = useState(false)
 
-  const nextMatchM = findNextMatch(bracketM)
-  const nextMatchF = findNextMatch(bracketF)
-  const nextMatchOpen = findNextMatch(bracketOpen)
+  const nextM = findNextMatchByRound(bracketM)
+  const nextF = findNextMatchByRound(bracketF)
+  const nextOpen = findNextMatchByRound(bracketOpen)
 
-  // First unfinished match across all pools
-  const nextMatch = nextMatchM ?? nextMatchF ?? nextMatchOpen
-  const nextPool: BracketPool = nextMatchM ? 'M' : nextMatchF ? 'F' : 'Open'
+  // Pick the lowest round index with any ready match, then first bracket at that round (M → F → Open).
+  // This ensures all QFs run before any SFs, all SFs before the finals, across all pools.
+  const minRound = Math.min(nextM?.round ?? Infinity, nextF?.round ?? Infinity, nextOpen?.round ?? Infinity)
+  const nextEntry = isFinite(minRound)
+    ? (nextM?.round === minRound ? nextM : nextF?.round === minRound ? nextF : nextOpen!)
+    : null
+  const nextMatch = nextEntry?.match ?? null
+  const nextPool: BracketPool = nextM?.round === minRound ? 'M' : nextF?.round === minRound ? 'F' : 'Open'
 
   function handleStartMatch() {
     if (!nextMatch) return

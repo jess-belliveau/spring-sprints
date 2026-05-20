@@ -40,12 +40,14 @@ export function QualifyingResults() {
   const hasGenderSplit = useEventStore(selectHasGenderSplit)
   const generateBracket = useEventStore((s) => s.generateBracket)
   const removeQualifyingResult = useEventStore((s) => s.removeQualifyingResult)
+  const moveRiderToEnd = useEventStore((s) => s.moveRiderToEnd)
   const setPhase = useEventStore((s) => s.setPhase)
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [freePairOpen, setFreePairOpen] = useState(false)
 
   function handleRetry(riderId: string) {
     removeQualifyingResult(riderId)
+    moveRiderToEnd(riderId)
     setPhase('qualifying')
   }
 

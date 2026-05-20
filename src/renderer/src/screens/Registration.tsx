@@ -212,7 +212,7 @@ export function Registration() {
         {import.meta.env.DEV && (
           <button
             onClick={() => {
-              const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Evan', 'Fiona', 'George', 'Hannah']
+              const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Evan', 'Fiona', 'George', 'Hannah', 'Ivan', 'Julia', 'Kevin', 'Laura', 'Mike', 'Nina', 'Oscar', 'Petra', 'Quinn', 'Rachel', 'Sam', 'Tara']
               names.forEach((name, i) => {
                 if (!riders.some((r) => r.name === name)) {
                   addRider({ id: nanoid(), name, gender: i % 2 === 0 ? 'M' : 'F' })
@@ -221,7 +221,7 @@ export function Registration() {
             }}
             className="w-full py-2 rounded-lg border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 text-sm font-bold tracking-widest uppercase transition-colors"
           >
-            ⚡ Seed 8 Riders
+            ⚡ Seed 20 Riders
           </button>
         )}
 

@@ -563,7 +563,7 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && !isDetecting && !isAwaitingStop && !isFalseStart && (
+          {isActive && !isDetecting && !isAwaitingStop && !isFalseStart && !showResult && (
             <div className="absolute inset-0 flex">
               <TrackDisplay
                 left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
@@ -646,7 +646,7 @@ export function Qualifying() {
           )}
 
           {showResult && finishResult && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
+            <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
               <div className="flex flex-col items-center gap-6">
                 <div className="text-green-400 text-4xl font-bold uppercase tracking-widest">Finished!</div>
                 <div className="text-8xl font-black text-white tabular-nums">
@@ -711,7 +711,7 @@ export function Qualifying() {
                             </span>
                           ) : (
                             <button
-                              onClick={() => removeQualifyingResult(riderId)}
+                              onClick={() => { removeQualifyingResult(riderId); moveRiderToEnd(riderId) }}
                               disabled={!isIdle || showResult}
                               className="text-xs text-stone-400 hover:text-white border border-stone-700 hover:border-stone-500 rounded px-2 py-0.5 disabled:opacity-30 transition-colors shrink-0"
                               title={formatTime(laneResult?.finishTimeMs ?? 0)}
