@@ -376,6 +376,7 @@ export function Qualifying() {
   const isLive = raceStatus === 'countdown' || raceStatus === 'racing'
   const twoLeaderboards = anyGender && availablePools.length > 1
 
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -602,11 +603,12 @@ export function Qualifying() {
           )}
 
           {isActive && !isDetecting && !isAwaitingStop && !isFalseStart && !showResult && (
-            <div className="absolute inset-0 flex">
+            <div className="absolute inset-0 flex overflow-hidden">
               <TrackDisplay
                 left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
                 right={raceLaneRef.current === 'right' && currentRider ? { riderName: currentRider.name } : null}
                 targetDistance={config.distanceMetres}
+                compact={twoLeaderboards}
               />
             </div>
           )}
@@ -771,6 +773,7 @@ export function Qualifying() {
           )
         })}
       </div>
+
 
       {/* Late arrival panel */}
       {isIdle && !showResult && (

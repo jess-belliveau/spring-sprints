@@ -17,6 +17,7 @@ interface Props {
   left: { riderName: string } | null
   right: { riderName: string } | null
   targetDistance: number
+  compact?: boolean
 }
 
 function arcOffset(r: number, pct: number): number {
@@ -34,7 +35,7 @@ function fmt(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${String(cs).padStart(2, '0')}`
 }
 
-export function TrackDisplay({ left, right, targetDistance }: Props) {
+export function TrackDisplay({ left, right, targetDistance, compact = false }: Props) {
   const hasBoth = left !== null && right !== null
   const leftR = hasBoth ? INNER_R : SOLO_R
 
@@ -230,46 +231,48 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
     }
   }, [])
 
+  const svgPx = compact ? 400 : SIZE
+
   // React renders the DOM structure once — all live updates happen imperatively above
   return (
-    <div className="flex items-center w-full h-full gap-4 px-8">
+    <div className={`flex items-center w-full h-full gap-4 ${compact ? 'px-4' : 'px-8'}`}>
 
       {/* ── Left rider stats ── */}
       {left && (
         <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
-          <span ref={leftLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-left)', opacity: 0 }}>
+          <span ref={leftLeadsRef} className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase`} style={{ color: 'var(--lane-left)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 
-          <span className="text-5xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-left)' }}>
+          <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase truncate`} style={{ color: 'var(--lane-left)' }}>
             {left.riderName}
           </span>
 
-          <span className="text-8xl font-black tabular-nums text-white leading-none text-right">
+          <span className={`${compact ? 'text-4xl' : 'text-8xl'} font-black tabular-nums text-white leading-none text-right`}>
             <span ref={leftDistRef}>0</span>
-            <span className="text-4xl text-stone-500"> m</span>
+            <span className={`${compact ? 'text-xl' : 'text-4xl'} text-stone-500`}> m</span>
           </span>
 
-          <span className="text-7xl font-bold tabular-nums text-amber-400 leading-none">
+          <span className={`${compact ? 'text-3xl' : 'text-7xl'} font-bold tabular-nums text-amber-400 leading-none`}>
             <span ref={leftWattsRef}>0</span>
-            <span className="text-3xl text-stone-400"> W</span>
+            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> W</span>
           </span>
 
-          <span className="text-5xl font-bold tabular-nums text-stone-300 leading-none">
+          <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-bold tabular-nums text-stone-300 leading-none`}>
             <span ref={leftCadenceRef}>0</span>
-            <span className="text-2xl text-stone-500"> rpm</span>
+            <span className={`${compact ? 'text-sm' : 'text-2xl'} text-stone-500`}> rpm</span>
           </span>
 
-          <span ref={leftTimeRef} className="text-3xl font-mono text-stone-500">0:00.00</span>
+          <span ref={leftTimeRef} className={`${compact ? 'text-xl' : 'text-3xl'} font-mono text-stone-500`}>0:00.00</span>
 
-          <span ref={leftFinishedRef} className="text-xl font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
+          <span ref={leftFinishedRef} className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-green-400 tracking-widest uppercase`} style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>
       )}
 
       {/* ── Circular track ── */}
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="flex-shrink-0">
+      <svg width={svgPx} height={svgPx} viewBox={`0 0 ${SIZE} ${SIZE}`} className="flex-shrink-0">
         {/* Track backgrounds — static */}
         {hasBoth && (
           <circle cx={CX} cy={CY} r={OUTER_R} fill="none" style={{ stroke: 'var(--track-bg)' }} strokeWidth={STROKE} />
@@ -347,32 +350,32 @@ export function TrackDisplay({ left, right, targetDistance }: Props) {
       {/* ── Right rider stats ── */}
       {right && (
         <div className="flex-1 flex flex-col items-start gap-2 min-w-0">
-          <span ref={rightLeadsRef} className="text-5xl font-black tracking-widest uppercase" style={{ color: 'var(--lane-right)', opacity: 0 }}>
+          <span ref={rightLeadsRef} className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase`} style={{ color: 'var(--lane-right)', opacity: 0 }}>
             ▲ LEADS +0m
           </span>
 
-          <span className="text-5xl font-black tracking-widest uppercase truncate" style={{ color: 'var(--lane-right)' }}>
+          <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-black tracking-widest uppercase truncate`} style={{ color: 'var(--lane-right)' }}>
             {right.riderName}
           </span>
 
-          <span className="text-8xl font-black tabular-nums text-white leading-none">
+          <span className={`${compact ? 'text-4xl' : 'text-8xl'} font-black tabular-nums text-white leading-none`}>
             <span ref={rightDistRef}>0</span>
-            <span className="text-4xl text-stone-500"> m</span>
+            <span className={`${compact ? 'text-xl' : 'text-4xl'} text-stone-500`}> m</span>
           </span>
 
-          <span className="text-7xl font-bold tabular-nums text-amber-400 leading-none">
+          <span className={`${compact ? 'text-3xl' : 'text-7xl'} font-bold tabular-nums text-amber-400 leading-none`}>
             <span ref={rightWattsRef}>0</span>
-            <span className="text-3xl text-stone-400"> W</span>
+            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> W</span>
           </span>
 
-          <span className="text-5xl font-bold tabular-nums text-stone-300 leading-none">
+          <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-bold tabular-nums text-stone-300 leading-none`}>
             <span ref={rightCadenceRef}>0</span>
-            <span className="text-2xl text-stone-500"> rpm</span>
+            <span className={`${compact ? 'text-sm' : 'text-2xl'} text-stone-500`}> rpm</span>
           </span>
 
-          <span ref={rightTimeRef} className="text-3xl font-mono text-stone-500">0:00.00</span>
+          <span ref={rightTimeRef} className={`${compact ? 'text-xl' : 'text-3xl'} font-mono text-stone-500`}>0:00.00</span>
 
-          <span ref={rightFinishedRef} className="text-xl font-bold text-green-400 tracking-widest uppercase" style={{ visibility: 'hidden' }}>
+          <span ref={rightFinishedRef} className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-green-400 tracking-widest uppercase`} style={{ visibility: 'hidden' }}>
             ✓ Finished
           </span>
         </div>
