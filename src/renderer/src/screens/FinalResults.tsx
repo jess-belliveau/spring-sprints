@@ -30,16 +30,17 @@ function computePlaces(bracket: BracketRound[]): Map<string, number> {
     }
   }
 
-  if (bracket.length >= 3) {
-    for (const match of bracket[0].matches) {
-      if (match.winnerId) {
-        const loserId = match.topRiderId === match.winnerId ? match.bottomRiderId : match.topRiderId
-        if (loserId && !places.has(loserId)) places.set(loserId, 5)
-      }
-    }
-  }
-
   return places
+}
+
+function podiumFrom(bracket: BracketRound[], riders: Rider[]) {
+  const places = computePlaces(bracket)
+  return [...places.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .flatMap(([id, place]) => {
+      const rider = riders.find((r) => r.id === id)
+      return rider ? [{ place, rider }] : []
+    })
 }
 
 function buildCsvForPool(
@@ -115,50 +116,43 @@ function buildCsv(
   return lines.join('\r\n')
 }
 
-function BracketSection({ bracket, riders, label, labelClass }: {
+function PoolPodium({ bracket, riders, label, labelColor }: {
   bracket: BracketRound[]
   riders: Rider[]
-  label: string
-  labelClass: string
+  label?: string
+  labelColor?: string
 }) {
-  if (bracket.length === 0) return null
-  const totalRounds = bracket.length
-  function roundLabel(idx: number): string {
-    const fromEnd = totalRounds - 1 - idx
-    if (fromEnd === 0) return 'Final'
-    if (fromEnd === 1) return 'Semi-Finals'
-    if (fromEnd === 2) return 'Quarter-Finals'
-    return `Round ${idx + 1}`
-  }
+  const podium = podiumFrom(bracket, riders)
+  const first = podium.find((p) => p.place === 1)
+  const second = podium.find((p) => p.place === 2)
+  const thirds = podium.filter((p) => p.place === 3)
+  if (!first) return null
+
   return (
-    <div className="w-full">
-      {label && <div className={`text-xs font-bold uppercase tracking-widest mb-3 ${labelClass}`}>{label}</div>}
-      {bracket.map((round, rIdx) => (
-        <div key={round.round} className="mb-4">
-          <div className="text-xs text-stone-500 uppercase tracking-widest mb-2">{roundLabel(rIdx)}</div>
-          {round.matches.map((match) => {
-            const top = riders.find((r) => r.id === match.topRiderId)
-            const bottom = riders.find((r) => r.id === match.bottomRiderId)
-            return (
-              <div key={match.id} className="flex gap-2 mb-2">
-                {[top, bottom].map((rider, i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 flex justify-between items-center px-4 py-2 rounded-lg ${
-                      rider?.id === match.winnerId ? 'bg-green-950 text-green-400' : 'bg-stone-900 text-stone-400'
-                    }`}
-                  >
-                    <span className="font-medium">{rider?.name ?? 'TBD'}</span>
-                    {rider?.id === match.winnerId && (
-                      <span className="text-xs uppercase tracking-widest">Winner</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          })}
+    <div className="flex flex-col items-center gap-6">
+      {label && (
+        <div className={`text-sm font-bold uppercase tracking-widest ${labelColor}`}>{label}</div>
+      )}
+      <div className="flex flex-col items-center gap-2">
+        <div className="text-4xl">🏆</div>
+        <div className="text-7xl font-black text-white tracking-tight leading-none">{first.rider.name}</div>
+      </div>
+      {(second || thirds.length > 0) && (
+        <div className="flex gap-10 flex-wrap justify-center">
+          {second && (
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-2xl">🥈</div>
+              <div className="text-3xl font-bold text-stone-300">{second.rider.name}</div>
+            </div>
+          )}
+          {thirds.map(({ rider }) => (
+            <div key={rider.id} className="flex flex-col items-center gap-1">
+              <div className="text-2xl">🥉</div>
+              <div className="text-3xl font-bold text-stone-400">{rider.name}</div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }
@@ -173,15 +167,18 @@ export function FinalResults() {
   const config = useEventStore((s) => s.event?.config)
   const reset = useEventStore((s) => s.reset)
 
-  function getChampion(bracket: BracketRound[]): Rider | null {
-    const finalRound = bracket[bracket.length - 1]
-    const winnerId = finalRound?.matches[0]?.winnerId
-    return winnerId ? (riders.find((r) => r.id === winnerId) ?? null) : null
-  }
+  const hasMen = bracketM.length > 0
+  const hasWomen = bracketF.length > 0
+  const hasOpen = bracketOpen.length > 0
 
-  const championM = getChampion(bracketM)
-  const championF = getChampion(bracketF)
-  const championOpen = getChampion(bracketOpen)
+  const wattBomber = qualifyingResults
+    .flatMap((r) => {
+      const lane = r.left ?? r.right
+      if (!lane) return []
+      const rider = riders.find((rd) => rd.id === lane.riderId)
+      return rider ? [{ rider, maxWatts: lane.maxWatts }] : []
+    })
+    .sort((a, b) => b.maxWatts - a.maxWatts)[0] ?? null
 
   async function handleExport() {
     const csv = buildCsv(riders, qualifyingResults, bracketM, bracketF, bracketOpen, hasGenderSplit)
@@ -190,66 +187,39 @@ export function FinalResults() {
   }
 
   return (
-    <div className="flex flex-col h-full px-8 pt-12 gap-8 items-center">
+    <div className="flex flex-col h-full items-center justify-between px-8 pt-12 pb-8">
       <h2 className="text-4xl font-black uppercase tracking-widest text-white">Final Results</h2>
 
-      {hasGenderSplit ? (
-        <div className="flex gap-12 flex-wrap justify-center">
-          {championM && (
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-blue-400 text-sm uppercase tracking-widest">Men's Champion</div>
-              <div className="text-5xl font-black text-white">{championM.name}</div>
-            </div>
-          )}
-          {championF && (
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-pink-400 text-sm uppercase tracking-widest">Women's Champion</div>
-              <div className="text-5xl font-black text-white">{championF.name}</div>
-            </div>
-          )}
-          {championOpen && (
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-stone-400 text-sm uppercase tracking-widest">Open Champion</div>
-              <div className="text-5xl font-black text-white">{championOpen.name}</div>
-            </div>
-          )}
-        </div>
-      ) : (
-        championM && (
-          <div className="flex flex-col items-center gap-2 py-4">
-            <div className="text-amber-400 text-2xl uppercase tracking-widest">Champion</div>
-            <div className="text-8xl font-black text-white">{championM.name}</div>
-          </div>
-        )
-      )}
-
-      <div className="flex-1 min-h-0 w-full max-w-5xl flex gap-6 overflow-hidden">
-        {hasGenderSplit ? (
-          <>
-            {bracketM.length > 0 && (
-              <div className="flex-1 overflow-y-auto">
-                <BracketSection bracket={bracketM} riders={riders} label="Men" labelClass="text-blue-400" />
-              </div>
-            )}
-            {bracketF.length > 0 && (
-              <div className="flex-1 overflow-y-auto">
-                <BracketSection bracket={bracketF} riders={riders} label="Women" labelClass="text-pink-400" />
-              </div>
-            )}
-            {bracketOpen.length > 0 && (
-              <div className="flex-1 overflow-y-auto">
-                <BracketSection bracket={bracketOpen} riders={riders} label="Open" labelClass="text-stone-400" />
-              </div>
-            )}
-          </>
+      <div className="flex-1 flex items-center justify-center w-full">
+        {!hasGenderSplit ? (
+          <PoolPodium bracket={bracketM} riders={riders} />
         ) : (
-          <div className="flex-1 overflow-y-auto max-w-2xl mx-auto">
-            <BracketSection bracket={bracketM} riders={riders} label="" labelClass="" />
+          <div className="flex gap-20 flex-wrap justify-center items-start">
+            {hasMen && (
+              <PoolPodium bracket={bracketM} riders={riders} label="Men" labelColor="text-blue-400" />
+            )}
+            {hasWomen && (
+              <PoolPodium bracket={bracketF} riders={riders} label="Women" labelColor="text-pink-400" />
+            )}
+            {hasOpen && (
+              <PoolPodium bracket={bracketOpen} riders={riders} label="Open" labelColor="text-stone-400" />
+            )}
           </div>
         )}
       </div>
 
-      <div className="flex gap-4 mb-8">
+      {wattBomber && (
+        <div className="flex items-center gap-5 border border-stone-700 rounded-xl px-8 py-4 mb-4">
+          <span className="text-2xl">⚡</span>
+          <div className="flex flex-col">
+            <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb</div>
+            <div className="text-2xl font-black text-white">{wattBomber.rider.name}</div>
+          </div>
+          <div className="text-3xl font-mono font-bold text-amber-400 ml-2">{wattBomber.maxWatts}W</div>
+        </div>
+      )}
+
+      <div className="flex gap-4">
         <button
           onClick={handleExport}
           className="py-3 px-10 rounded-lg bg-stone-700 hover:bg-stone-600 text-white text-lg font-medium tracking-widest uppercase transition-colors"
