@@ -171,14 +171,21 @@ export function FinalResults() {
   const hasWomen = bracketF.length > 0
   const hasOpen = bracketOpen.length > 0
 
-  const wattBomber = qualifyingResults
-    .flatMap((r) => {
-      const lane = r.left ?? r.right
-      if (!lane) return []
-      const rider = riders.find((rd) => rd.id === lane.riderId)
-      return rider ? [{ rider, maxWatts: lane.maxWatts }] : []
-    })
-    .sort((a, b) => b.maxWatts - a.maxWatts)[0] ?? null
+  function topWatter(riderSubset: Rider[]) {
+    return qualifyingResults
+      .flatMap((r) => {
+        const lane = r.left ?? r.right
+        if (!lane) return []
+        const rider = riderSubset.find((rd) => rd.id === lane.riderId)
+        return rider ? [{ rider, maxWatts: lane.maxWatts }] : []
+      })
+      .sort((a, b) => b.maxWatts - a.maxWatts)[0] ?? null
+  }
+
+  const wattBomber = hasGenderSplit ? null : topWatter(riders)
+  const wattBomberM = hasGenderSplit && hasMen ? topWatter(riders.filter((r) => r.gender === 'M')) : null
+  const wattBomberF = hasGenderSplit && hasWomen ? topWatter(riders.filter((r) => r.gender === 'F')) : null
+  const wattBomberOpen = hasGenderSplit && hasOpen ? topWatter(riders.filter((r) => !r.gender)) : null
 
   async function handleExport() {
     const csv = buildCsv(riders, qualifyingResults, bracketM, bracketF, bracketOpen, hasGenderSplit)
@@ -216,6 +223,40 @@ export function FinalResults() {
             <div className="text-2xl font-black text-white">{wattBomber.rider.name}</div>
           </div>
           <div className="text-3xl font-mono font-bold text-amber-400 ml-2">{wattBomber.maxWatts}W</div>
+        </div>
+      )}
+      {hasGenderSplit && (wattBomberM || wattBomberF || wattBomberOpen) && (
+        <div className="flex gap-4 flex-wrap justify-center mb-4">
+          {wattBomberM && (
+            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
+              <span className="text-xl">⚡</span>
+              <div className="flex flex-col">
+                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-blue-400">Men</span></div>
+                <div className="text-xl font-black text-white">{wattBomberM.rider.name}</div>
+              </div>
+              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberM.maxWatts}W</div>
+            </div>
+          )}
+          {wattBomberF && (
+            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
+              <span className="text-xl">⚡</span>
+              <div className="flex flex-col">
+                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-pink-400">Women</span></div>
+                <div className="text-xl font-black text-white">{wattBomberF.rider.name}</div>
+              </div>
+              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberF.maxWatts}W</div>
+            </div>
+          )}
+          {wattBomberOpen && (
+            <div className="flex items-center gap-4 border border-stone-700 rounded-xl px-6 py-3">
+              <span className="text-xl">⚡</span>
+              <div className="flex flex-col">
+                <div className="text-amber-400 text-xs font-bold uppercase tracking-widest">Watt Bomb · <span className="text-stone-400">Open</span></div>
+                <div className="text-xl font-black text-white">{wattBomberOpen.rider.name}</div>
+              </div>
+              <div className="text-2xl font-mono font-bold text-amber-400 ml-1">{wattBomberOpen.maxWatts}W</div>
+            </div>
+          )}
         </div>
       )}
 

@@ -374,6 +374,7 @@ export function Qualifying() {
   const isIdle = raceStatus === null || raceStatus === 'idle'
   const isActive = raceStatus !== null && raceStatus !== 'idle'
   const isLive = raceStatus === 'countdown' || raceStatus === 'racing'
+  const twoLeaderboards = anyGender && availablePools.length > 1
 
   return (
     <div className="flex flex-col h-full">
@@ -481,6 +482,43 @@ export function Qualifying() {
       <div className="flex flex-1 overflow-hidden">
         {/* Queue sidebar */}
         <div className="w-52 border-r border-stone-800 flex flex-col overflow-hidden">
+          {twoLeaderboards && isIdle && !showResult && currentRider && (
+            <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-3">
+              <div className="text-stone-500 text-xs uppercase tracking-widest">Up now</div>
+              <div className="text-white text-lg font-black leading-tight truncate">{currentRider.name}</div>
+              {currentRider.gender && (
+                <div className={`text-xs font-bold uppercase tracking-widest ${currentRider.gender === 'M' ? 'text-blue-400' : 'text-pink-400'}`}>
+                  {currentRider.gender === 'M' ? 'Men' : 'Women'}
+                </div>
+              )}
+              {detectedLane && bothConnected && (
+                <div className={`text-xs font-bold uppercase tracking-widest ${detectedLane === 'left' ? 'text-[var(--lane-left)]' : 'text-[var(--lane-right)]'}`}>
+                  {detectedLane === 'left' ? 'Left' : 'Right'} bike
+                </div>
+              )}
+              {!leftReady && !rightReady && (
+                <div className="text-amber-400 text-xs uppercase tracking-widest">No devices</div>
+              )}
+              <button
+                onClick={startRace}
+                disabled={!leftReady && !rightReady}
+                className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-sm font-bold tracking-widest uppercase rounded transition-colors"
+              >
+                START
+              </button>
+            </div>
+          )}
+          {twoLeaderboards && isIdle && !showResult && !currentRider && (
+            <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-3">
+              <div className="text-green-400 text-sm font-bold uppercase tracking-widest">All done!</div>
+              <button
+                onClick={() => setPhase('qualifying-results')}
+                className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-sm font-bold tracking-widest uppercase rounded transition-colors"
+              >
+                Results →
+              </button>
+            </div>
+          )}
           <div className="px-4 pt-4 pb-2 text-xs text-stone-500 uppercase tracking-widest">Up Next</div>
           <div className="flex-1 overflow-y-auto px-2 pb-4">
             {remaining.length === 0 ? (
@@ -520,7 +558,7 @@ export function Qualifying() {
 
         {/* Race area */}
         <div className="flex-1 relative">
-          {isIdle && !showResult && currentRider && (
+          {!twoLeaderboards && isIdle && !showResult && currentRider && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-6">
                 <div className="text-stone-400 text-2xl">Ready to race?</div>
@@ -549,7 +587,7 @@ export function Qualifying() {
             </div>
           )}
 
-          {isIdle && !showResult && !currentRider && (
+          {!twoLeaderboards && isIdle && !showResult && !currentRider && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
                 <div className="text-green-400 text-2xl font-bold uppercase tracking-widest">All riders done!</div>
