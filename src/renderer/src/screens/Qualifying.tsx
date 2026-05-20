@@ -44,7 +44,7 @@ export function Qualifying() {
   const rightReady = connectedDevices['right']?.status === 'connected'
   const bothConnected = leftReady && rightReady
 
-  const { playCountdownBeep, playFinishFanfare } = useAudio()
+  const { playCountdownBeep, playFinishFanfare, playBuzzer } = useAudio()
 
   const completedIds = new Set(existingResults.map((r) => r.left?.riderId ?? r.right?.riderId))
   const remaining = riders.filter((r) => !completedIds.has(r.id))
@@ -55,7 +55,14 @@ export function Qualifying() {
   const [addName, setAddName] = useState('')
   const [addGender, setAddGender] = useState<'M' | 'F'>('M')
   const [addError, setAddError] = useState('')
-  const [countdownHeld, setCountdownHeld] = useState(false)
+  const [isFalseStart, setIsFalseStart] = useState(false)
+  const [falseStartRiderName, setFalseStartRiderName] = useState('')
+  const [buzzerEnabled, setBuzzerEnabled] = useState(true)
+  const buzzerEnabledRef = useRef(true)
+  buzzerEnabledRef.current = buzzerEnabled
+  const falseStartFiredRef = useRef(false)
+  const handleFalseStartRef = useRef<((name: string) => void) | null>(null)
+  const startCountdownRef = useRef<() => void>(() => {})
   const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const [demoStopped, setDemoStopped] = useState<Record<string, boolean>>({})
 
@@ -68,12 +75,10 @@ export function Qualifying() {
   const raceIdRef = useRef<string>('')
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const finishHandledRef = useRef(false)
-  const heldRef = useRef(false)
   const currentRiderRef = useRef(currentRider)
   currentRiderRef.current = currentRider
   const falseStartEnabledRef = useRef(falseStartEnabled)
   falseStartEnabledRef.current = falseStartEnabled
-  const wattsHoldRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
   const DETECT_THRESHOLD = 30
   const DETECT_SUSTAIN_MS = 2000
@@ -167,10 +172,13 @@ export function Qualifying() {
       }
 
       const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
-      const shouldHold = falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
-      heldRef.current = shouldHold
-      if (wattsHoldRef.current) wattsHoldRef.current.textContent = String(raceLaneRef.current === 'left' ? lw : rw)
-      setCountdownHeld((prev) => (prev === shouldHold ? prev : shouldHold))
+      if (falseStartEnabledRef.current && isCountdown && !falseStartFiredRef.current) {
+        const detWatts = raceLaneRef.current === 'left' ? lw : rw
+        if (detWatts > WATT_THRESHOLD) {
+          falseStartFiredRef.current = true
+          handleFalseStartRef.current?.(state.race?.[raceLaneRef.current]?.riderName ?? '')
+        }
+      }
     })
   }, [])
 
@@ -207,18 +215,20 @@ export function Qualifying() {
       lane === 'right' ? { riderId: currentRiderRef.current.id, riderName: currentRiderRef.current.name } : null
     )
     window.electronAPI.startRace(raceId, config.distanceMetres, [lane])
+    startCountdownRef.current()
+  }
 
+  // Updated every render so the subscription callback always has the latest version
+  startCountdownRef.current = () => {
     let count = 3
     setCountdown(count)
     playCountdownBeep(count)
     let lastAt = performance.now()
-    let wasHeld = false
     function tick() {
-      if (heldRef.current) { wasHeld = true; countdownRef.current = setTimeout(tick, 100); return }
       count -= 1
       const now = performance.now()
-      const drift = wasHeld ? 0 : now - lastAt - 1000
-      wasHeld = false; lastAt = now
+      const drift = now - lastAt - 1000
+      lastAt = now
       if (count > 0) {
         setCountdown(count); playCountdownBeep(count)
         countdownRef.current = setTimeout(tick, Math.max(0, 1000 - drift))
@@ -229,6 +239,21 @@ export function Qualifying() {
       }
     }
     countdownRef.current = setTimeout(tick, 1000)
+    // Reset AFTER setting the timer so a synchronous Zustand subscription fire
+    // (triggered by setCountdown above) doesn't immediately re-trigger a false start
+    // before countdownRef.current is properly set.
+    falseStartFiredRef.current = false
+  }
+
+  handleFalseStartRef.current = (riderName: string) => {
+    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
+    setIsFalseStart(true)
+    setFalseStartRiderName(riderName)
+    if (buzzerEnabledRef.current) playBuzzer()
+    countdownRef.current = setTimeout(() => {
+      setIsFalseStart(false)
+      startCountdownRef.current()
+    }, 1000)
   }
 
   // Updated every render so the subscription callback always has the latest version
@@ -250,7 +275,6 @@ export function Qualifying() {
     isAwaitingStopRef.current = false
     setIsAwaitingStop(false)
     window.electronAPI.stopRace()
-    resetRace()
     startRaceOnLane(lane)
   }
 
@@ -293,6 +317,8 @@ export function Qualifying() {
     finishHandledRef.current = false
     setDetectedLane(null)
     raceLaneRef.current = 'left'
+    setIsFalseStart(false)
+    falseStartFiredRef.current = false
   }
 
   function handleAddRider() {
@@ -316,12 +342,15 @@ export function Qualifying() {
     isAwaitingStopRef.current = false
     belowThresholdSinceRef.current = 0
     awaitingStopLaneRef.current = null
+    falseStartFiredRef.current = false
     window.electronAPI.stopRace()
     resetRace()
     setFinishResult(null)
     setShowResult(false)
     setIsDetecting(false)
     setIsAwaitingStop(false)
+    setIsFalseStart(false)
+    setFalseStartRiderName('')
     setDetectedLane(null)
     raceLaneRef.current = 'left'
   }
@@ -410,6 +439,15 @@ export function Qualifying() {
               </button>
             </>
           )}
+          <button
+            onClick={() => setBuzzerEnabled((v) => !v)}
+            className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+              buzzerEnabled ? 'text-amber-400 border-amber-700' : 'text-stone-600 border-stone-700'
+            }`}
+            title="Toggle false-start buzzer"
+          >
+            Buzzer {buzzerEnabled ? 'ON' : 'OFF'}
+          </button>
           {isLive ? (
             <button
               onClick={handleAbort}
@@ -511,7 +549,7 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && !isDetecting && !isAwaitingStop && (
+          {isActive && !isDetecting && !isAwaitingStop && !isFalseStart && (
             <div className="absolute inset-0 flex">
               <TrackDisplay
                 left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
@@ -580,16 +618,15 @@ export function Qualifying() {
             </div>
           )}
 
-          {isActive && !isDetecting && !isAwaitingStop && raceStatus === 'countdown' && !countdownHeld && (
+          {isActive && !isDetecting && !isAwaitingStop && !isFalseStart && raceStatus === 'countdown' && (
             <Countdown value={countdownValue} />
           )}
 
-          {countdownHeld && (
-            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
-              <div className="flex flex-col items-center gap-3">
-                <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
-                <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
-                <div className="text-[var(--accent)] text-2xl font-bold tabular-nums"><span ref={wattsHoldRef}>0</span>W</div>
+          {isActive && isFalseStart && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/80">
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-red-400 text-7xl font-black uppercase tracking-widest">False Start</div>
+                <div className="text-white text-3xl font-bold">{falseStartRiderName}</div>
               </div>
             </div>
           )}

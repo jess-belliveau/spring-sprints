@@ -25,19 +25,21 @@ export function FreePairRace() {
   const rightReady = connectedDevices['right']?.status === 'connected'
   const devicesReady = leftReady && rightReady
 
-  const { playCountdownBeep, playFinishFanfare } = useAudio()
+  const { playCountdownBeep, playFinishFanfare, playBuzzer } = useAudio()
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
-  const heldRef = useRef(false)
-  const [countdownHeld, setCountdownHeld] = useState(false)
+  const [isFalseStart, setIsFalseStart] = useState(false)
+  const [falseStartRiderName, setFalseStartRiderName] = useState('')
+  const [buzzerEnabled, setBuzzerEnabled] = useState(true)
+  const buzzerEnabledRef = useRef(true)
+  buzzerEnabledRef.current = buzzerEnabled
+  const falseStartFiredRef = useRef(false)
+  const handleFalseStartRef = useRef<((name: string) => void) | null>(null)
+  const startCountdownRef = useRef<() => void>(() => {})
   const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const falseStartEnabledRef = useRef(falseStartEnabled)
   falseStartEnabledRef.current = falseStartEnabled
-  const leftWattsSpanRef = useRef<HTMLSpanElement>(null)
-  const rightWattsSpanRef = useRef<HTMLSpanElement>(null)
-  const leftWattsValRef = useRef<HTMLSpanElement>(null)
-  const rightWattsValRef = useRef<HTMLSpanElement>(null)
   const WATT_THRESHOLD = 10
 
   // Stable per-session rider IDs — not tied to any event rider
@@ -59,14 +61,15 @@ export function FreePairRace() {
       const lw = state.race?.left?.instantWatts ?? 0
       const rw = state.race?.right?.instantWatts ?? 0
       const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
-      const shouldHold =
-        falseStartEnabledRef.current && isCountdown && (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD)
-      heldRef.current = shouldHold
-      if (leftWattsSpanRef.current) leftWattsSpanRef.current.style.display = lw > WATT_THRESHOLD ? '' : 'none'
-      if (rightWattsSpanRef.current) rightWattsSpanRef.current.style.display = rw > WATT_THRESHOLD ? '' : 'none'
-      if (leftWattsValRef.current) leftWattsValRef.current.textContent = String(lw)
-      if (rightWattsValRef.current) rightWattsValRef.current.textContent = String(rw)
-      setCountdownHeld((prev) => (prev === shouldHold ? prev : shouldHold))
+      if (falseStartEnabledRef.current && isCountdown && !falseStartFiredRef.current) {
+        if (lw > WATT_THRESHOLD || rw > WATT_THRESHOLD) {
+          falseStartFiredRef.current = true
+          const name = lw > WATT_THRESHOLD
+            ? (state.race?.left?.riderName ?? '')
+            : (state.race?.right?.riderName ?? '')
+          handleFalseStartRef.current?.(name)
+        }
+      }
     })
   }, [])
 
@@ -102,18 +105,19 @@ export function FreePairRace() {
       { riderId: rightRiderIdRef.current, riderName: rightName }
     )
     window.electronAPI.startRace(raceId, distance, ['left', 'right'])
+    startCountdownRef.current()
+  }
 
+  startCountdownRef.current = () => {
     let count = 3
     setCountdown(count)
     playCountdownBeep(count)
     let lastAt = performance.now()
-    let wasHeld = false
     function tick() {
-      if (heldRef.current) { wasHeld = true; countdownRef.current = setTimeout(tick, 100); return }
       count -= 1
       const now = performance.now()
-      const drift = wasHeld ? 0 : now - lastAt - 1000
-      wasHeld = false; lastAt = now
+      const drift = now - lastAt - 1000
+      lastAt = now
       if (count > 0) {
         setCountdown(count); playCountdownBeep(count)
         countdownRef.current = setTimeout(tick, Math.max(0, 1000 - drift))
@@ -124,6 +128,18 @@ export function FreePairRace() {
       }
     }
     countdownRef.current = setTimeout(tick, 1000)
+    falseStartFiredRef.current = false
+  }
+
+  handleFalseStartRef.current = (riderName: string) => {
+    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
+    setIsFalseStart(true)
+    setFalseStartRiderName(riderName)
+    if (buzzerEnabledRef.current) playBuzzer()
+    countdownRef.current = setTimeout(() => {
+      setIsFalseStart(false)
+      startCountdownRef.current()
+    }, 1000)
   }
 
   const returnPhase = freePairRiders?.returnPhase ?? 'bracket'
@@ -140,8 +156,11 @@ export function FreePairRace() {
     }
     fanfarePlayed.current = false
     resultsRef.current = {}
+    falseStartFiredRef.current = false
     window.electronAPI.stopRace()
     resetRace()
+    setIsFalseStart(false)
+    setFalseStartRiderName('')
     setPhase(returnPhase)
   }
 
@@ -178,6 +197,15 @@ export function FreePairRace() {
               False Start {falseStartEnabled ? 'ON' : 'OFF'}
             </button>
           )}
+          <button
+            onClick={() => setBuzzerEnabled((v) => !v)}
+            className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+              buzzerEnabled ? 'text-amber-400 border-amber-700' : 'text-stone-600 border-stone-700'
+            }`}
+            title="Toggle false-start buzzer"
+          >
+            Buzzer {buzzerEnabled ? 'ON' : 'OFF'}
+          </button>
           {isIdle && (
             <button
               onClick={handleDone}
@@ -198,7 +226,7 @@ export function FreePairRace() {
       </div>
 
       <div className="flex-1 relative">
-        {raceStatus !== null && (
+        {raceStatus !== null && !isFalseStart && (
           <div className="absolute inset-0 flex">
             <TrackDisplay
               left={{ riderName: leftName }}
@@ -227,21 +255,13 @@ export function FreePairRace() {
           </div>
         )}
 
-        {raceStatus === 'countdown' && !countdownHeld && <Countdown value={countdownValue} />}
+        {raceStatus === 'countdown' && !isFalseStart && <Countdown value={countdownValue} />}
 
-        {countdownHeld && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/60">
+        {isFalseStart && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/80">
             <div className="flex flex-col items-center gap-4">
-              <div className="text-red-400 text-6xl font-black uppercase tracking-widest">Hold!</div>
-              <div className="text-stone-300 text-xl">Stop pedaling to resume countdown</div>
-              <div className="flex gap-12 text-2xl font-bold tabular-nums">
-                <span ref={leftWattsSpanRef} style={{ display: 'none' }} className="text-[var(--lane-left)]">
-                  {leftName}: <span ref={leftWattsValRef}>0</span>W
-                </span>
-                <span ref={rightWattsSpanRef} style={{ display: 'none' }} className="text-[var(--lane-right)]">
-                  {rightName}: <span ref={rightWattsValRef}>0</span>W
-                </span>
-              </div>
+              <div className="text-red-400 text-7xl font-black uppercase tracking-widest">False Start</div>
+              <div className="text-white text-3xl font-bold">{falseStartRiderName}</div>
             </div>
           </div>
         )}

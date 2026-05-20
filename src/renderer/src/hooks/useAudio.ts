@@ -40,6 +40,20 @@ export function useAudio() {
     [beep]
   )
 
+  const playBuzzer = useCallback(() => {
+    const ctx = getCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'square'
+    osc.frequency.value = 180
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 1.0)
+  }, [getCtx])
+
   const playFinishFanfare = useCallback(() => {
     getCtx()
     const notes = [523, 659, 784, 1047]
@@ -56,5 +70,5 @@ export function useAudio() {
     return () => { ctxRef.current?.close() }
   }, [])
 
-  return { beep, playCountdownBeep, playFinishFanfare }
+  return { beep, playCountdownBeep, playFinishFanfare, playBuzzer }
 }
