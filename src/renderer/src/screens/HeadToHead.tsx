@@ -190,7 +190,9 @@ export function HeadToHead() {
 
   const leftTime = resultsRef.current['left']?.finishTimeMs ?? Infinity
   const rightTime = resultsRef.current['right']?.finishTimeMs ?? Infinity
-  const winnerName = leftTime < rightTime ? leftRider.name : rightRider.name
+  const winnerIsLeft = leftTime < rightTime
+  const winnerName = winnerIsLeft ? leftRider.name : rightRider.name
+  const winnerColor = winnerIsLeft ? 'var(--lane-left)' : 'var(--lane-right)'
 
   const poolLabel = hasGenderSplit
     ? (matchPool === 'M' ? ' · Men' : matchPool === 'F' ? ' · Women' : ' · Open')
@@ -300,7 +302,7 @@ export function HeadToHead() {
         {isFinished && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
             <div className="flex flex-col items-center gap-6">
-              <div className="text-[var(--accent)] text-6xl font-black uppercase tracking-widest">
+              <div className="text-6xl font-black uppercase tracking-widest" style={{ color: winnerColor }}>
                 {winnerName} Wins!
               </div>
               <button
