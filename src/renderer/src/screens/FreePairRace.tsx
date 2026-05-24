@@ -49,6 +49,12 @@ export function FreePairRace() {
   const leftName = freePairRiders?.leftName ?? ''
   const rightName = freePairRiders?.rightName ?? ''
   const distance = freePairRiders?.distance ?? 250
+  const garrettMode = freePairRiders?.garrettMode ?? false
+  const leftWeightKg = freePairRiders?.leftWeightKg
+  const rightWeightKg = freePairRiders?.rightWeightKg
+  const garrettWeights = garrettMode && leftWeightKg && rightWeightKg
+    ? { left: leftWeightKg, right: rightWeightKg }
+    : null
 
   // If riders are missing (e.g. app restarted mid-session), bail back to bracket
   useEffect(() => {
@@ -234,6 +240,7 @@ export function FreePairRace() {
               left={{ riderName: leftName }}
               right={{ riderName: rightName }}
               targetDistance={distance}
+              garrettWeights={garrettWeights}
             />
           </div>
         )}
@@ -274,6 +281,28 @@ export function FreePairRace() {
               <div className="text-6xl font-black uppercase tracking-widest" style={{ color: winnerColor }}>
                 {winnerName} Wins!
               </div>
+
+              {garrettWeights && (
+                <div className="flex gap-12">
+                  {([
+                    { name: leftName, result: resultsRef.current['left'], weight: garrettWeights.left, color: 'var(--lane-left)' },
+                    { name: rightName, result: resultsRef.current['right'], weight: garrettWeights.right, color: 'var(--lane-right)' },
+                  ] as const).map(({ name, result, weight, color }) => (
+                    <div key={name} className="flex flex-col items-center gap-1">
+                      <span className="text-sm font-bold uppercase tracking-widest" style={{ color }}>{name}</span>
+                      <span className="text-3xl font-black text-amber-400 tabular-nums">
+                        {result ? (result.avgWatts / weight).toFixed(2) : '—'}
+                        <span className="text-lg text-stone-400 font-normal"> avg W/kg</span>
+                      </span>
+                      <span className="text-xl font-bold text-stone-300 tabular-nums">
+                        {result ? (result.maxWatts / weight).toFixed(2) : '—'}
+                        <span className="text-sm text-stone-500 font-normal"> max W/kg</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <button
                 onClick={handleDone}
                 className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase rounded-lg transition-colors"

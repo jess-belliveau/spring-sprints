@@ -2,9 +2,18 @@ import { useState } from 'react'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { useEventStore, selectConfig } from '../store/event.store'
 
+interface FreePairStartData {
+  leftName: string
+  rightName: string
+  distance: number
+  garrettMode: boolean
+  leftWeightKg?: number
+  rightWeightKg?: number
+}
+
 interface FreePairModalProps {
   onClose: () => void
-  onStart: (leftName: string, rightName: string, distance: number) => void
+  onStart: (data: FreePairStartData) => void
 }
 
 const LANE_DOT_COLOR: Record<string, string> = {
@@ -16,6 +25,8 @@ const LANE_DOT_COLOR: Record<string, string> = {
 
 const DISTANCE_PRESETS = [100, 250, 500, 1000]
 
+export type { FreePairStartData }
+
 export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
   const config = useEventStore(selectConfig)
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
@@ -23,17 +34,34 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
   const [leftName, setLeftName] = useState('')
   const [rightName, setRightName] = useState('')
   const [distance, setDistance] = useState(config.distanceMetres)
+  const [garrettMode, setGarrettMode] = useState(false)
+  const [leftWeight, setLeftWeight] = useState('')
+  const [rightWeight, setRightWeight] = useState('')
 
   const leftStatus = connectedDevices['left']?.status ?? 'empty'
   const rightStatus = connectedDevices['right']?.status ?? 'empty'
   const leftConnected = leftStatus === 'connected'
   const rightConnected = rightStatus === 'connected'
 
-  const canStart = leftName.trim().length > 0 && rightName.trim().length > 0 && leftConnected && rightConnected
+  const leftWeightKg = parseFloat(leftWeight)
+  const rightWeightKg = parseFloat(rightWeight)
+  const weightsValid = !garrettMode || (
+    !isNaN(leftWeightKg) && leftWeightKg > 0 &&
+    !isNaN(rightWeightKg) && rightWeightKg > 0
+  )
+
+  const canStart = leftName.trim().length > 0 && rightName.trim().length > 0 && leftConnected && rightConnected && weightsValid
 
   function handleStart() {
     if (!canStart) return
-    onStart(leftName.trim(), rightName.trim(), distance)
+    onStart({
+      leftName: leftName.trim(),
+      rightName: rightName.trim(),
+      distance,
+      garrettMode,
+      leftWeightKg: garrettMode ? leftWeightKg : undefined,
+      rightWeightKg: garrettMode ? rightWeightKg : undefined,
+    })
   }
 
   return (
@@ -67,6 +95,28 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
               </div>
             </div>
 
+            {/* Garrett Mode toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-stone-400 uppercase tracking-widest font-bold">Garrett Mode</span>
+                <span className="text-xs text-stone-600">Display W/kg · enter rider weights</span>
+              </div>
+              <button
+                onClick={() => setGarrettMode((v) => !v)}
+                className={`relative w-12 h-6 rounded-full border transition-colors ${
+                  garrettMode
+                    ? 'bg-[var(--accent)] border-[var(--accent)]'
+                    : 'bg-stone-800 border-stone-700'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                    garrettMode ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
             {/* Left lane */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -93,6 +143,18 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
                 className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-left)] transition-colors"
                 autoFocus
               />
+              {garrettMode && (
+                <input
+                  type="number"
+                  value={leftWeight}
+                  onChange={(e) => setLeftWeight(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                  placeholder="Weight (kg)"
+                  min={1}
+                  max={300}
+                  className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2.5 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-left)] transition-colors"
+                />
+              )}
               {!leftConnected && (
                 <p className="text-xs text-amber-500">Connect a device to the left lane via BLE</p>
               )}
@@ -123,6 +185,18 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
                 placeholder="Rider name"
                 className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-right)] transition-colors"
               />
+              {garrettMode && (
+                <input
+                  type="number"
+                  value={rightWeight}
+                  onChange={(e) => setRightWeight(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                  placeholder="Weight (kg)"
+                  min={1}
+                  max={300}
+                  className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2.5 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-right)] transition-colors"
+                />
+              )}
               {!rightConnected && (
                 <p className="text-xs text-amber-500">Connect a device to the right lane via BLE</p>
               )}

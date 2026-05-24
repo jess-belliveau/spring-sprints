@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid'
 import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket, selectBracketF, selectBracketOpen } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
+import type { FreePairStartData } from '../components/FreePairModal'
 import { CustomBracketModal } from '../components/CustomBracketModal'
 import { BRACKET_SIZE } from '@shared/constants'
 
@@ -76,8 +77,8 @@ export function Registration() {
 
   const canContinue = riders.length >= 2
 
-  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
-    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'registration' })
+  function handleFreePairStart(data: FreePairStartData) {
+    setFreePairRiders({ ...data, returnPhase: 'registration' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }

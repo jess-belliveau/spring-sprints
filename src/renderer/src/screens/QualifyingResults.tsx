@@ -4,6 +4,7 @@ import { useRaceStore } from '../store/race.store'
 import { Leaderboard } from '../components/Leaderboard'
 import { WattBomber } from '../components/WattBomber'
 import { FreePairModal } from '../components/FreePairModal'
+import type { FreePairStartData } from '../components/FreePairModal'
 import { BRACKET_SIZE } from '@shared/constants'
 import type { RaceResult, Rider } from '@shared/types'
 
@@ -51,8 +52,8 @@ export function QualifyingResults() {
     setPhase('qualifying')
   }
 
-  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
-    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'qualifying-results' })
+  function handleFreePairStart(data: FreePairStartData) {
+    setFreePairRiders({ ...data, returnPhase: 'qualifying-results' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }

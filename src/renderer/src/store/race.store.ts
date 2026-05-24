@@ -3,14 +3,30 @@ import type { ActiveRaceState, Lane, LaneResult, LiveLaneState, TelemetryFrame }
 
 interface RaceState {
   race: ActiveRaceState | null
-  freePairRiders: { leftName: string; rightName: string; distance: number; returnPhase: import('@shared/types').EventPhase } | null
+  freePairRiders: {
+    leftName: string
+    rightName: string
+    distance: number
+    returnPhase: import('@shared/types').EventPhase
+    garrettMode: boolean
+    leftWeightKg?: number
+    rightWeightKg?: number
+  } | null
 
   initRace: (raceId: string, left: { riderId: string; riderName: string } | null, right: { riderId: string; riderName: string } | null) => void
   setCountdown: (value: number | null) => void
   setRacing: () => void
   applyTelemetry: (frame: TelemetryFrame) => void
   setLaneFinished: (lane: Lane, result: LaneResult) => void
-  setFreePairRiders: (riders: { leftName: string; rightName: string; distance: number; returnPhase: import('@shared/types').EventPhase }) => void
+  setFreePairRiders: (riders: {
+    leftName: string
+    rightName: string
+    distance: number
+    returnPhase: import('@shared/types').EventPhase
+    garrettMode: boolean
+    leftWeightKg?: number
+    rightWeightKg?: number
+  }) => void
   resetRace: () => void
 }
 

@@ -4,6 +4,7 @@ import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, select
 import { useRaceStore } from '../store/race.store'
 import { BracketTree } from '../components/BracketTree'
 import { FreePairModal } from '../components/FreePairModal'
+import type { FreePairStartData } from '../components/FreePairModal'
 import type { BracketMatch, BracketRound, BracketPool } from '@shared/types'
 
 function findNextMatchByRound(rounds: BracketRound[]): { match: BracketMatch; round: number } | null {
@@ -47,8 +48,8 @@ export function Bracket() {
     setPhase('head-to-head')
   }
 
-  function handleFreePairStart(leftName: string, rightName: string, distance: number) {
-    setFreePairRiders({ leftName, rightName, distance, returnPhase: 'bracket' })
+  function handleFreePairStart(data: FreePairStartData) {
+    setFreePairRiders({ ...data, returnPhase: 'bracket' })
     setFreePairOpen(false)
     setPhase('free-pair')
   }

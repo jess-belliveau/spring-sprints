@@ -18,6 +18,7 @@ interface Props {
   right: { riderName: string } | null
   targetDistance: number
   compact?: boolean
+  garrettWeights?: { left: number; right: number } | null
 }
 
 function arcOffset(r: number, pct: number): number {
@@ -35,7 +36,7 @@ function fmt(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${String(cs).padStart(2, '0')}`
 }
 
-export function TrackDisplay({ left, right, targetDistance, compact = false }: Props) {
+export function TrackDisplay({ left, right, targetDistance, compact = false, garrettWeights = null }: Props) {
   const hasBoth = left !== null && right !== null
   const leftR = hasBoth ? INNER_R : SOLO_R
 
@@ -46,6 +47,8 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
   leftRRef.current = leftR
   const targetDistanceRef = useRef(targetDistance)
   targetDistanceRef.current = targetDistance
+  const garrettWeightsRef = useRef(garrettWeights)
+  garrettWeightsRef.current = garrettWeights
 
   // SVG refs
   const leftArcRef = useRef<SVGCircleElement>(null)
@@ -115,16 +118,21 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
       leadGapRef.current = hb ? leftDist - rightDist : 0
 
       // Stats text
+      const gw = garrettWeightsRef.current
       if (l) {
         if (leftDistRef.current)     leftDistRef.current.textContent     = String(Math.round(leftDist))
-        if (leftWattsRef.current)    leftWattsRef.current.textContent    = String(l.instantWatts)
+        if (leftWattsRef.current)    leftWattsRef.current.textContent    = gw
+          ? (l.instantWatts / gw.left).toFixed(1)
+          : String(l.instantWatts)
         if (leftCadenceRef.current)  leftCadenceRef.current.textContent  = String(l.cadenceRpm)
         if (leftTimeRef.current)     leftTimeRef.current.textContent     = fmt(l.elapsedMs)
         if (leftFinishedRef.current) leftFinishedRef.current.style.visibility = l.finished ? 'visible' : 'hidden'
       }
       if (r) {
         if (rightDistRef.current)     rightDistRef.current.textContent     = String(Math.round(rightDist))
-        if (rightWattsRef.current)    rightWattsRef.current.textContent    = String(r.instantWatts)
+        if (rightWattsRef.current)    rightWattsRef.current.textContent    = gw
+          ? (r.instantWatts / gw.right).toFixed(1)
+          : String(r.instantWatts)
         if (rightCadenceRef.current)  rightCadenceRef.current.textContent  = String(r.cadenceRpm)
         if (rightTimeRef.current)     rightTimeRef.current.textContent     = fmt(r.elapsedMs)
         if (rightFinishedRef.current) rightFinishedRef.current.style.visibility = r.finished ? 'visible' : 'hidden'
@@ -255,7 +263,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
 
           <span className={`${compact ? 'text-3xl' : 'text-7xl'} font-bold tabular-nums text-amber-400 leading-none`}>
             <span ref={leftWattsRef}>0</span>
-            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> W</span>
+            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> {garrettWeights ? 'W/kg' : 'W'}</span>
           </span>
 
           <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-bold tabular-nums text-stone-300 leading-none`}>
@@ -365,7 +373,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false }: P
 
           <span className={`${compact ? 'text-3xl' : 'text-7xl'} font-bold tabular-nums text-amber-400 leading-none`}>
             <span ref={rightWattsRef}>0</span>
-            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> W</span>
+            <span className={`${compact ? 'text-base' : 'text-3xl'} text-stone-400`}> {garrettWeights ? 'W/kg' : 'W'}</span>
           </span>
 
           <span className={`${compact ? 'text-2xl' : 'text-5xl'} font-bold tabular-nums text-stone-300 leading-none`}>

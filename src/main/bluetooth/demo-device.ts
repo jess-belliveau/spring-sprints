@@ -41,10 +41,11 @@ export class DemoDevice extends EventEmitter implements ITrainerDevice {
   }
 
   private tick(): void {
+    const jitter = () => (Math.random() - 0.5) * 2
     const data: IndoorBikeData = {
-      instantaneousPower: this._stopped ? 0 : this.watts,
+      instantaneousPower: this._stopped ? 0 : Math.max(0, Math.round(this.watts + jitter() * this.watts * 0.08)),
       instantaneousSpeed: 0,
-      instantaneousCadence: this._stopped ? 0 : this.cadenceRaw,
+      instantaneousCadence: this._stopped ? 0 : Math.max(0, Math.round(this.cadenceRaw + jitter() * 4)),
       totalDistance: 0,
       timestamp: Date.now()
     }
