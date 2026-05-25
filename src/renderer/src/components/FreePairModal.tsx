@@ -103,15 +103,13 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
               </div>
               <button
                 onClick={() => setGarrettMode((v) => !v)}
-                className={`relative w-12 h-6 rounded-full border transition-colors ${
-                  garrettMode
-                    ? 'bg-[var(--accent)] border-[var(--accent)]'
-                    : 'bg-stone-800 border-stone-700'
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  garrettMode ? 'bg-[var(--accent)]' : 'bg-stone-700'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    garrettMode ? 'translate-x-6' : 'translate-x-0.5'
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                    garrettMode ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>
