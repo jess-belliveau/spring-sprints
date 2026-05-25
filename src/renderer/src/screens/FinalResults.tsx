@@ -1,4 +1,4 @@
-import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, selectRiders, selectQualifyingResults, selectHasGenderSplit } from '../store/event.store'
+import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, selectRiders, selectQualifyingResults, selectBracketResults, selectHasGenderSplit } from '../store/event.store'
 import type { BracketRound, BracketPool, LaneResult, Rider, RaceResult } from '@shared/types'
 
 function formatTime(ms: number): string {
@@ -12,7 +12,9 @@ function computePlaces(bracket: BracketRound[]): Map<string, number> {
   if (bracket.length === 0) return places
 
   const finalRound = bracket[bracket.length - 1]
-  const finalMatch = finalRound?.matches[0]
+  const finalMatch = finalRound?.matches.find((m) => !m.isThirdPlace) ?? finalRound?.matches[0]
+  const thirdPlaceMatch = finalRound?.matches.find((m) => m.isThirdPlace)
+
   if (finalMatch?.winnerId) {
     places.set(finalMatch.winnerId, 1)
     const loserId = finalMatch.topRiderId === finalMatch.winnerId
@@ -21,7 +23,13 @@ function computePlaces(bracket: BracketRound[]): Map<string, number> {
     if (loserId) places.set(loserId, 2)
   }
 
-  if (bracket.length >= 2) {
+  if (thirdPlaceMatch?.winnerId) {
+    places.set(thirdPlaceMatch.winnerId, 3)
+    const loserId = thirdPlaceMatch.topRiderId === thirdPlaceMatch.winnerId
+      ? thirdPlaceMatch.bottomRiderId
+      : thirdPlaceMatch.topRiderId
+    if (loserId) places.set(loserId, 4)
+  } else if (!thirdPlaceMatch && bracket.length >= 2) {
     for (const match of bracket[bracket.length - 2].matches) {
       if (match.winnerId) {
         const loserId = match.topRiderId === match.winnerId ? match.bottomRiderId : match.topRiderId
@@ -125,7 +133,7 @@ function PoolPodium({ bracket, riders, label, labelColor }: {
   const podium = podiumFrom(bracket, riders)
   const first = podium.find((p) => p.place === 1)
   const second = podium.find((p) => p.place === 2)
-  const thirds = podium.filter((p) => p.place === 3)
+  const third = podium.find((p) => p.place === 3)
   if (!first) return null
 
   return (
@@ -137,7 +145,7 @@ function PoolPodium({ bracket, riders, label, labelColor }: {
         <div className="text-4xl">🏆</div>
         <div className="text-7xl font-black text-white tracking-tight leading-none">{first.rider.name}</div>
       </div>
-      {(second || thirds.length > 0) && (
+      {(second || third) && (
         <div className="flex gap-10 flex-wrap justify-center">
           {second && (
             <div className="flex flex-col items-center gap-1">
@@ -145,12 +153,12 @@ function PoolPodium({ bracket, riders, label, labelColor }: {
               <div className="text-3xl font-bold text-stone-300">{second.rider.name}</div>
             </div>
           )}
-          {thirds.map(({ rider }) => (
-            <div key={rider.id} className="flex flex-col items-center gap-1">
+          {third && (
+            <div className="flex flex-col items-center gap-1">
               <div className="text-2xl">🥉</div>
-              <div className="text-3xl font-bold text-stone-400">{rider.name}</div>
+              <div className="text-3xl font-bold text-stone-400">{third.rider.name}</div>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -163,6 +171,7 @@ export function FinalResults() {
   const bracketOpen = useEventStore(selectBracketOpen)
   const riders = useEventStore(selectRiders)
   const qualifyingResults = useEventStore(selectQualifyingResults)
+  const bracketResults = useEventStore(selectBracketResults)
   const hasGenderSplit = useEventStore(selectHasGenderSplit)
   const config = useEventStore((s) => s.event?.config)
   const reset = useEventStore((s) => s.reset)
@@ -172,14 +181,19 @@ export function FinalResults() {
   const hasOpen = bracketOpen.length > 0
 
   function topWatter(riderSubset: Rider[]) {
-    return qualifyingResults
-      .flatMap((r) => {
-        const lane = r.left ?? r.right
-        if (!lane) return []
+    const byRider = new Map<string, { rider: Rider; maxWatts: number }>()
+    for (const r of [...qualifyingResults, ...bracketResults]) {
+      for (const lane of [r.left, r.right]) {
+        if (!lane) continue
         const rider = riderSubset.find((rd) => rd.id === lane.riderId)
-        return rider ? [{ rider, maxWatts: lane.maxWatts }] : []
-      })
-      .sort((a, b) => b.maxWatts - a.maxWatts)[0] ?? null
+        if (!rider) continue
+        const existing = byRider.get(rider.id)
+        if (!existing || lane.maxWatts > existing.maxWatts) {
+          byRider.set(rider.id, { rider, maxWatts: lane.maxWatts })
+        }
+      }
+    }
+    return [...byRider.values()].sort((a, b) => b.maxWatts - a.maxWatts)[0] ?? null
   }
 
   const wattBomber = hasGenderSplit ? null : topWatter(riders)

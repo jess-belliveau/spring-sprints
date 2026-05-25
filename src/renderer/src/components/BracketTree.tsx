@@ -39,7 +39,7 @@ export function BracketTree({ rounds, riders, currentMatchId, mirrored = false }
               className="flex flex-col"
               style={{ gap: `${Math.pow(2, originalIdx + 1) * 16}px` }}
             >
-              {round.matches.map((match) => {
+              {round.matches.filter((m) => !m.isThirdPlace).map((match) => {
                 const isCurrent = match.id === currentMatchId
                 const topName = getRiderName(match.topRiderId, riders)
                 const bottomName = getRiderName(match.bottomRiderId, riders)

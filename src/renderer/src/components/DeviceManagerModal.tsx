@@ -26,6 +26,8 @@ interface Props {
 export function DeviceManagerModal({ onClose }: Props) {
   const scannedDevices = useBluetoothStore((s) => s.scannedDevices)
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+  const deviceLabels = useBluetoothStore((s) => s.deviceLabels)
+  const setDeviceLabel = useBluetoothStore((s) => s.setDeviceLabel)
   const clearScannedDevices = useBluetoothStore((s) => s.clearScannedDevices)
   const setDeviceConnecting = useBluetoothStore((s) => s.setDeviceConnecting)
   const [ftmsOnly, setFtmsOnly] = useState(true)
@@ -125,7 +127,7 @@ export function DeviceManagerModal({ onClose }: Props) {
                           <>
                             <RssiDots rssi={conn.device.rssi} />
                             <span className="text-white text-sm font-medium truncate">
-                              {conn.device.name}
+                              {deviceLabels[lane] || conn.device.name}
                             </span>
                           </>
                         )}
@@ -149,6 +151,15 @@ export function DeviceManagerModal({ onClose }: Props) {
                         </button>
                       )}
                     </div>
+                    {isConnected && conn.device && (
+                      <input
+                        type="text"
+                        value={deviceLabels[lane] ?? ''}
+                        onChange={(e) => setDeviceLabel(lane, e.target.value)}
+                        placeholder={conn.device.name}
+                        className="mt-2 w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-stone-500 transition-colors"
+                      />
+                    )}
                   </div>
                 )
               })}
@@ -206,14 +217,14 @@ export function DeviceManagerModal({ onClose }: Props) {
                           <button
                             disabled={anyConnecting}
                             onClick={() => handleAssign(device.id, 'left')}
-                            className="text-xs px-2 py-1 rounded bg-stone-700 hover:bg-[var(--lane-left)] text-white disabled:opacity-40 transition-colors"
+                            className="text-xs px-2 py-1 rounded border border-[var(--lane-left)] text-[var(--lane-left)] hover:bg-[var(--lane-left)] hover:text-white disabled:opacity-40 transition-colors"
                           >
                             L
                           </button>
                           <button
                             disabled={anyConnecting}
                             onClick={() => handleAssign(device.id, 'right')}
-                            className="text-xs px-2 py-1 rounded bg-stone-700 hover:bg-[var(--lane-right)] text-white disabled:opacity-40 transition-colors"
+                            className="text-xs px-2 py-1 rounded border border-[var(--lane-right)] text-[var(--lane-right)] hover:bg-[var(--lane-right)] hover:text-white disabled:opacity-40 transition-colors"
                           >
                             R
                           </button>

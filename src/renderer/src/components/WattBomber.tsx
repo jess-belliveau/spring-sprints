@@ -9,15 +9,19 @@ interface Props {
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export function WattBomber({ results, riders, limit = 3 }: Props) {
-  const ranked = results
-    .map((r) => {
-      const lane = r.left ?? r.right
-      if (!lane) return null
+  const byRider = new Map<string, { rider: Rider; maxWatts: number }>()
+  for (const r of results) {
+    for (const lane of [r.left, r.right]) {
+      if (!lane) continue
       const rider = riders.find((rd) => rd.id === lane.riderId)
-      if (!rider) return null
-      return { rider, maxWatts: lane.maxWatts }
-    })
-    .filter((x): x is { rider: Rider; maxWatts: number } => x !== null)
+      if (!rider) continue
+      const existing = byRider.get(rider.id)
+      if (!existing || lane.maxWatts > existing.maxWatts) {
+        byRider.set(rider.id, { rider, maxWatts: lane.maxWatts })
+      }
+    }
+  }
+  const ranked = [...byRider.values()]
     .sort((a, b) => b.maxWatts - a.maxWatts)
     .slice(0, limit)
 

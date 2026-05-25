@@ -32,12 +32,14 @@ describe('buildBracket', () => {
     expect(qf[3].bottomRiderId).toBe('rider-6')
   })
 
-  it('creates 3 rounds for 8 riders', () => {
+  it('creates 3 rounds for 8 riders with a 3rd place match in the final round', () => {
     const rounds = buildBracket(makeRiders(8))
     expect(rounds).toHaveLength(3)
     expect(rounds[0].matches).toHaveLength(4)
     expect(rounds[1].matches).toHaveLength(2)
-    expect(rounds[2].matches).toHaveLength(1)
+    expect(rounds[2].matches).toHaveLength(2)
+    expect(rounds[2].matches[0].isThirdPlace).toBeFalsy()
+    expect(rounds[2].matches[1].isThirdPlace).toBe(true)
   })
 
   it('handles 4 riders — byes at seeds 5-8, auto-advance real riders', () => {

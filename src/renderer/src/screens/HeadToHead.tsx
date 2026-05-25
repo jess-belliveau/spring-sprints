@@ -17,6 +17,7 @@ export function HeadToHead() {
   const config = useEventStore(selectConfig)
   const currentRaceId = useEventStore((s) => s.event?.currentRaceId)
   const advanceBracket = useEventStore((s) => s.advanceBracket)
+  const addBracketResult = useEventStore((s) => s.addBracketResult)
   const setPhase = useEventStore((s) => s.setPhase)
 
   const raceStatus = useRaceStore((s) => s.race?.status ?? null)
@@ -103,6 +104,14 @@ export function HeadToHead() {
     const leftTime = left?.finishTimeMs ?? Infinity
     const rightTime = right?.finishTimeMs ?? Infinity
     const winnerId = leftTime < rightTime ? leftRider?.id : rightRider?.id
+
+    addBracketResult({
+      raceId: internalRaceIdRef.current,
+      type: 'bracket',
+      startedAt: Date.now(),
+      left,
+      right
+    })
 
     if (currentMatch && winnerId) {
       advanceBracket(currentMatch.id, winnerId, internalRaceIdRef.current, matchPoolRef.current)
@@ -202,7 +211,10 @@ export function HeadToHead() {
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center px-8 py-4 border-b border-stone-800">
         <span className="text-xs text-stone-500 uppercase tracking-widest">
-          Round {currentMatch.round + 1} · Match {currentMatch.matchIndex + 1}{poolLabel}
+          {currentMatch.isThirdPlace
+            ? `3rd Place Match${poolLabel}`
+            : `Round ${currentMatch.round + 1} · Match ${currentMatch.matchIndex + 1}${poolLabel}`
+          }
           {' — '}
           <span className="text-[var(--lane-left)]">{leftRider.name}</span>
           {' vs '}

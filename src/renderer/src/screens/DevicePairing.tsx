@@ -8,6 +8,7 @@ export function DevicePairing() {
   const setPhase = useEventStore((s) => s.setPhase)
   const scannedDevices = useBluetoothStore((s) => s.scannedDevices)
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
+  const deviceLabels = useBluetoothStore((s) => s.deviceLabels)
   const clearScannedDevices = useBluetoothStore((s) => s.clearScannedDevices)
   const setDeviceConnecting = useBluetoothStore((s) => s.setDeviceConnecting)
 
@@ -73,7 +74,7 @@ export function DevicePairing() {
               </div>
               <div className="text-white font-medium">
                 {conn?.status === 'connected'
-                  ? conn.device.name
+                  ? deviceLabels[lane] || conn.device.name
                   : conn?.status === 'connecting'
                     ? 'Connecting…'
                     : 'Empty'}

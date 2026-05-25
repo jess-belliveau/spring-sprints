@@ -24,6 +24,7 @@ interface EventState {
   setRiderGender: (riderId: string, gender: 'M' | 'F') => void
   addQualifyingResult: (result: RaceResult) => void
   removeQualifyingResult: (riderId: string) => void
+  addBracketResult: (result: RaceResult) => void
   moveRiderToEnd: (riderId: string) => void
   generateBracket: () => void
   generateCustomBracket: (names: string[]) => void
@@ -66,7 +67,7 @@ export function buildBracket(riders: Rider[]): BracketRound[] {
   const riderCount = riders.length
   if (riderCount === 0) return []
 
-  let bracketSize = 2
+  let bracketSize = BRACKET_SIZE
   while (bracketSize < riderCount) bracketSize *= 2
 
   const positions = bracketPositions(bracketSize)
@@ -111,6 +112,21 @@ export function buildBracket(riders: Rider[]): BracketRound[] {
   }
 
   propagateByes(rounds)
+
+  // Only add 3rd place match when at least one SF needs to be played (≥3 real riders)
+  if (numRounds >= 2 && riderCount >= 3) {
+    rounds[rounds.length - 1].matches.push({
+      id: nanoid(),
+      round: numRounds - 1,
+      matchIndex: 1,
+      topRiderId: null,
+      bottomRiderId: null,
+      winnerId: null,
+      raceResultId: null,
+      isThirdPlace: true
+    })
+  }
+
   return rounds
 }
 
@@ -155,6 +171,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
       config,
       riders: [],
       qualifyingResults: [],
+      bracketResults: [],
       bracket: [],
       bracketF: [],
       bracketOpen: [],
@@ -165,7 +182,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
     window.electronAPI.saveEvent(event)
   },
 
-  setEvent: (event) => set({ event: { ...event, bracketF: event.bracketF ?? [], bracketOpen: event.bracketOpen ?? [] } }),
+  setEvent: (event) => set({ event: { ...event, bracketF: event.bracketF ?? [], bracketOpen: event.bracketOpen ?? [], bracketResults: event.bracketResults ?? [] } }),
 
   setPhase: (phase) =>
     set((s) => {
@@ -233,6 +250,15 @@ export const useEventStore = create<EventState>((set, _get) => ({
       return { event }
     }),
 
+  addBracketResult: (result) =>
+    set((s) => {
+      if (!s.event) return s
+      const bracketResults = [...s.event.bracketResults, result]
+      const event = { ...s.event, bracketResults }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
   moveRiderToEnd: (riderId) =>
     set((s) => {
       if (!s.event) return s
@@ -287,6 +313,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
         bracketF: [],
         bracketOpen: [],
         qualifyingResults: [],
+        bracketResults: [],
         phase: 'bracket' as EventPhase
       }
       window.electronAPI.saveEvent(event)
@@ -325,6 +352,24 @@ export const useEventStore = create<EventState>((set, _get) => ({
         if (nextMatch) {
           if (slot === 'top') nextMatch.topRiderId = winnerId
           else nextMatch.bottomRiderId = winnerId
+        }
+
+        const thirdPlaceMatch = bracket[nextRoundIdx].matches.find((m) => m.isThirdPlace)
+        if (thirdPlaceMatch) {
+          const loserId = match.topRiderId === winnerId ? match.bottomRiderId : match.topRiderId
+          if (loserId) {
+            if (slot === 'top' && !thirdPlaceMatch.topRiderId) thirdPlaceMatch.topRiderId = loserId
+            else if (slot === 'bottom' && !thirdPlaceMatch.bottomRiderId) thirdPlaceMatch.bottomRiderId = loserId
+          }
+          // Auto-advance 3rd place only once ALL current-round matches are decided
+          // (guards against premature advance when second SF hasn't run yet)
+          const allFeedersDone = bracket[roundIdx].matches.every((m) => m.winnerId)
+          if (allFeedersDone && !thirdPlaceMatch.winnerId) {
+            if (thirdPlaceMatch.topRiderId && !thirdPlaceMatch.bottomRiderId)
+              thirdPlaceMatch.winnerId = thirdPlaceMatch.topRiderId
+            else if (thirdPlaceMatch.bottomRiderId && !thirdPlaceMatch.topRiderId)
+              thirdPlaceMatch.winnerId = thirdPlaceMatch.bottomRiderId
+          }
         }
       }
 
@@ -369,6 +414,7 @@ export const selectBracket = (s: EventState): BracketRound[] => s.event?.bracket
 export const selectBracketF = (s: EventState): BracketRound[] => s.event?.bracketF ?? EMPTY_BRACKET
 export const selectBracketOpen = (s: EventState): BracketRound[] => s.event?.bracketOpen ?? EMPTY_BRACKET
 export const selectQualifyingResults = (s: EventState): RaceResult[] => s.event?.qualifyingResults ?? EMPTY_RESULTS
+export const selectBracketResults = (s: EventState): RaceResult[] => s.event?.bracketResults ?? EMPTY_RESULTS
 export const selectConfig = (s: EventState): EventConfig => s.event?.config ?? EMPTY_CONFIG
 export const selectHasGenderSplit = (s: EventState): boolean =>
   s.event?.riders.some((r) => r.gender !== undefined) ?? false

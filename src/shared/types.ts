@@ -90,6 +90,7 @@ export interface BracketMatch {
   bottomRiderId: string | null
   winnerId: string | null
   raceResultId: string | null
+  isThirdPlace?: boolean
 }
 
 export interface BracketRound {
@@ -109,6 +110,7 @@ export interface EventData {
   config: EventConfig
   riders: Rider[]
   qualifyingResults: RaceResult[]
+  bracketResults: RaceResult[]
   bracket: BracketRound[]     // M bracket (or combined for non-gender events)
   bracketF: BracketRound[]    // Women's bracket
   bracketOpen: BracketRound[] // Riders without gender

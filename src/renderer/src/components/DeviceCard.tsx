@@ -47,14 +47,14 @@ export function DeviceCard({ device, assignedLane, onAssign, disabled }: Props) 
             <button
               disabled={disabled}
               onClick={() => onAssign('left')}
-              className="px-3 py-1 text-sm rounded bg-stone-700 hover:bg-[var(--lane-left)] text-white disabled:opacity-40 transition-colors"
+              className="px-3 py-1 text-sm rounded border border-[var(--lane-left)] text-[var(--lane-left)] hover:bg-[var(--lane-left)] hover:text-white disabled:opacity-40 transition-colors"
             >
               Left
             </button>
             <button
               disabled={disabled}
               onClick={() => onAssign('right')}
-              className="px-3 py-1 text-sm rounded bg-stone-700 hover:bg-[var(--lane-right)] text-white disabled:opacity-40 transition-colors"
+              className="px-3 py-1 text-sm rounded border border-[var(--lane-right)] text-[var(--lane-right)] hover:bg-[var(--lane-right)] hover:text-white disabled:opacity-40 transition-colors"
             >
               Right
             </button>

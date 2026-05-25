@@ -4,6 +4,7 @@ import type { BLEDeviceInfo, ConnectedDevice, Lane } from '@shared/types'
 interface BluetoothState {
   scannedDevices: BLEDeviceInfo[]
   connectedDevices: Partial<Record<Lane, ConnectedDevice>>
+  deviceLabels: Partial<Record<Lane, string>>
   isScanning: boolean
 
   setScanning: (v: boolean) => void
@@ -13,11 +14,13 @@ interface BluetoothState {
   setDeviceConnected: (lane: Lane, device: BLEDeviceInfo) => void
   setDeviceDisconnected: (lane: Lane) => void
   setDeviceError: (lane: Lane, message: string) => void
+  setDeviceLabel: (lane: Lane, label: string) => void
 }
 
 export const useBluetoothStore = create<BluetoothState>((set) => ({
   scannedDevices: [],
   connectedDevices: {},
+  deviceLabels: {},
   isScanning: false,
 
   setScanning: (v) => set({ isScanning: v }),
@@ -51,8 +54,13 @@ export const useBluetoothStore = create<BluetoothState>((set) => ({
     set((s) => {
       const next = { ...s.connectedDevices }
       delete next[lane]
-      return { connectedDevices: next }
+      const nextLabels = { ...s.deviceLabels }
+      delete nextLabels[lane]
+      return { connectedDevices: next, deviceLabels: nextLabels }
     }),
+
+  setDeviceLabel: (lane, label) =>
+    set((s) => ({ deviceLabels: { ...s.deviceLabels, [lane]: label } })),
 
   setDeviceError: (lane, _message) =>
     set((s) => {
