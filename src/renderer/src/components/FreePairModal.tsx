@@ -9,6 +9,9 @@ interface FreePairStartData {
   garrettMode: boolean
   leftWeightKg?: number
   rightWeightKg?: number
+  countAsQualifying?: boolean
+  leftGender?: 'M' | 'F'
+  rightGender?: 'M' | 'F'
 }
 
 interface FreePairModalProps {
@@ -29,6 +32,8 @@ export type { FreePairStartData }
 
 export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
   const config = useEventStore(selectConfig)
+  const phase = useEventStore((s) => s.event?.phase)
+  const isQualifyingPhase = phase === 'qualifying'
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
   const deviceLabels = useBluetoothStore((s) => s.deviceLabels)
 
@@ -38,6 +43,9 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
   const [garrettMode, setGarrettMode] = useState(false)
   const [leftWeight, setLeftWeight] = useState('')
   const [rightWeight, setRightWeight] = useState('')
+  const [countAsQualifying, setCountAsQualifying] = useState(isQualifyingPhase)
+  const [leftGender, setLeftGender] = useState<'M' | 'F'>('M')
+  const [rightGender, setRightGender] = useState<'M' | 'F'>('M')
 
   const leftStatus = connectedDevices['left']?.status ?? 'empty'
   const rightStatus = connectedDevices['right']?.status ?? 'empty'
@@ -62,6 +70,9 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
       garrettMode,
       leftWeightKg: garrettMode ? leftWeightKg : undefined,
       rightWeightKg: garrettMode ? rightWeightKg : undefined,
+      countAsQualifying: isQualifyingPhase ? countAsQualifying : undefined,
+      leftGender: isQualifyingPhase && countAsQualifying ? leftGender : undefined,
+      rightGender: isQualifyingPhase && countAsQualifying ? rightGender : undefined,
     })
   }
 
@@ -73,7 +84,11 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
           <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-1">
             Free Pair Race
           </h2>
-          <p className="text-stone-500 text-sm mb-6">Outside the bracket — results are not recorded.</p>
+          <p className="text-stone-500 text-sm mb-6">
+            {isQualifyingPhase && countAsQualifying
+              ? 'Results will be recorded as qualifying times.'
+              : 'Outside the bracket — results are not recorded.'}
+          </p>
 
           <div className="flex flex-col gap-5">
             {/* Distance */}
@@ -95,6 +110,28 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
                 ))}
               </div>
             </div>
+
+            {/* Qualifying toggle — only when qualifying is in progress */}
+            {isQualifyingPhase && (
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-stone-400 uppercase tracking-widest font-bold">Count as Qualifying</span>
+                  <span className="text-xs text-stone-600">Record results on the leaderboard</span>
+                </div>
+                <button
+                  onClick={() => setCountAsQualifying((v) => !v)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    countAsQualifying ? 'bg-[var(--accent)]' : 'bg-stone-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      countAsQualifying ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Garrett Mode toggle */}
             <div className="flex items-center justify-between">
@@ -133,15 +170,29 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
                   </span>
                 </div>
               </div>
-              <input
-                type="text"
-                value={leftName}
-                onChange={(e) => setLeftName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-                placeholder="Rider name"
-                className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-left)] transition-colors"
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={leftName}
+                  onChange={(e) => setLeftName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                  placeholder="Rider name"
+                  className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-left)] transition-colors"
+                  autoFocus
+                />
+                {isQualifyingPhase && countAsQualifying && (
+                  <div className="flex rounded-lg border border-stone-700 overflow-hidden shrink-0">
+                    <button
+                      onClick={() => setLeftGender('M')}
+                      className={`px-3 text-xs font-bold transition-colors ${leftGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500 hover:text-stone-300'}`}
+                    >M</button>
+                    <button
+                      onClick={() => setLeftGender('F')}
+                      className={`px-3 text-xs font-bold border-l border-stone-700 transition-colors ${leftGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500 hover:text-stone-300'}`}
+                    >F</button>
+                  </div>
+                )}
+              </div>
               {garrettMode && (
                 <input
                   type="number"
@@ -176,14 +227,28 @@ export function FreePairModal({ onClose, onStart }: FreePairModalProps) {
                   </span>
                 </div>
               </div>
-              <input
-                type="text"
-                value={rightName}
-                onChange={(e) => setRightName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-                placeholder="Rider name"
-                className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-right)] transition-colors"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={rightName}
+                  onChange={(e) => setRightName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                  placeholder="Rider name"
+                  className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-4 py-3 text-white placeholder-stone-600 focus:outline-none focus:border-[var(--lane-right)] transition-colors"
+                />
+                {isQualifyingPhase && countAsQualifying && (
+                  <div className="flex rounded-lg border border-stone-700 overflow-hidden shrink-0">
+                    <button
+                      onClick={() => setRightGender('M')}
+                      className={`px-3 text-xs font-bold transition-colors ${rightGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500 hover:text-stone-300'}`}
+                    >M</button>
+                    <button
+                      onClick={() => setRightGender('F')}
+                      className={`px-3 text-xs font-bold border-l border-stone-700 transition-colors ${rightGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500 hover:text-stone-300'}`}
+                    >F</button>
+                  </div>
+                )}
+              </div>
               {garrettMode && (
                 <input
                   type="number"

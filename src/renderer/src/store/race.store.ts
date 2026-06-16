@@ -11,6 +11,9 @@ interface RaceState {
     garrettMode: boolean
     leftWeightKg?: number
     rightWeightKg?: number
+    countAsQualifying?: boolean
+    leftGender?: 'M' | 'F'
+    rightGender?: 'M' | 'F'
   } | null
 
   initRace: (raceId: string, left: { riderId: string; riderName: string } | null, right: { riderId: string; riderName: string } | null) => void
@@ -26,6 +29,9 @@ interface RaceState {
     garrettMode: boolean
     leftWeightKg?: number
     rightWeightKg?: number
+    countAsQualifying?: boolean
+    leftGender?: 'M' | 'F'
+    rightGender?: 'M' | 'F'
   }) => void
   resetRace: () => void
 }

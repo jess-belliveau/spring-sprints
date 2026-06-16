@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectRiders, selectConfig, selectQualifyingResults } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
+import { FreePairModal } from '../components/FreePairModal'
+import type { FreePairStartData } from '../components/FreePairModal'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
@@ -39,6 +41,7 @@ export function Qualifying() {
   const setRacing = useRaceStore((s) => s.setRacing)
   const setLaneFinished = useRaceStore((s) => s.setLaneFinished)
   const resetRace = useRaceStore((s) => s.resetRace)
+  const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
 
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
   const leftReady = connectedDevices['left']?.status === 'connected'
@@ -51,6 +54,7 @@ export function Qualifying() {
   const remaining = riders.filter((r) => !completedIds.has(r.id))
   const currentRider = remaining[0] ?? null
 
+  const [freePairOpen, setFreePairOpen] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [finishResult, setFinishResult] = useState<LaneResult | null>(null)
   const [addName, setAddName] = useState('')
@@ -347,6 +351,23 @@ export function Qualifying() {
     setAddError('')
   }
 
+  function handleFreePairStart(data: FreePairStartData) {
+    setFreePairOpen(false)
+    setFreePairRiders({
+      leftName: data.leftName,
+      rightName: data.rightName,
+      distance: data.distance,
+      garrettMode: data.garrettMode,
+      leftWeightKg: data.leftWeightKg,
+      rightWeightKg: data.rightWeightKg,
+      returnPhase: 'qualifying',
+      countAsQualifying: data.countAsQualifying,
+      leftGender: data.leftGender,
+      rightGender: data.rightGender,
+    })
+    setPhase('free-pair')
+  }
+
   function handleAbort() {
     if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
     finishHandledRef.current = false
@@ -464,6 +485,14 @@ export function Qualifying() {
           >
             Buzzer {buzzerEnabled ? 'ON' : 'OFF'}
           </button>
+          {isIdle && !showResult && (
+            <button
+              onClick={() => setFreePairOpen(true)}
+              className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-3 py-1 uppercase tracking-widest transition-colors"
+            >
+              Free Pair
+            </button>
+          )}
           {isLive ? (
             <button
               onClick={handleAbort}
@@ -774,6 +803,10 @@ export function Qualifying() {
         })}
       </div>
 
+
+      {freePairOpen && (
+        <FreePairModal onClose={() => setFreePairOpen(false)} onStart={handleFreePairStart} />
+      )}
 
       {/* Late arrival panel */}
       {isIdle && !showResult && (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore } from '../store/event.store'
+import { useEventStore, selectRiders } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
@@ -10,6 +10,9 @@ import type { LaneResult } from '@shared/types'
 
 export function FreePairRace() {
   const setPhase = useEventStore((s) => s.setPhase)
+  const addQualifyingResult = useEventStore((s) => s.addQualifyingResult)
+  const addRider = useEventStore((s) => s.addRider)
+  const riders = useEventStore(selectRiders)
 
   const freePairRiders = useRaceStore((s) => s.freePairRiders)
   const raceStatus = useRaceStore((s) => s.race?.status ?? null)
@@ -52,6 +55,9 @@ export function FreePairRace() {
   const garrettMode = freePairRiders?.garrettMode ?? false
   const leftWeightKg = freePairRiders?.leftWeightKg
   const rightWeightKg = freePairRiders?.rightWeightKg
+  const countAsQualifying = freePairRiders?.countAsQualifying ?? false
+  const leftGender = freePairRiders?.leftGender
+  const rightGender = freePairRiders?.rightGender
   const garrettWeights = garrettMode && leftWeightKg && rightWeightKg
     ? { left: leftWeightKg, right: rightWeightKg }
     : null
@@ -151,6 +157,37 @@ export function FreePairRace() {
   const returnPhase = freePairRiders?.returnPhase ?? 'bracket'
 
   function handleDone() {
+    if (countAsQualifying) {
+      function findOrCreateRider(name: string, gender: 'M' | 'F' | undefined): string {
+        const existing = riders.find((r) => r.name.toLowerCase() === name.toLowerCase())
+        if (existing) return existing.id
+        const id = nanoid()
+        addRider({ id, name, gender })
+        return id
+      }
+      const leftResult = resultsRef.current['left']
+      const rightResult = resultsRef.current['right']
+      if (leftResult) {
+        const riderId = findOrCreateRider(leftName, leftGender)
+        addQualifyingResult({
+          raceId: nanoid(),
+          type: 'qualifying',
+          startedAt: Date.now(),
+          left: { ...leftResult, riderId },
+          right: null,
+        })
+      }
+      if (rightResult) {
+        const riderId = findOrCreateRider(rightName, rightGender)
+        addQualifyingResult({
+          raceId: nanoid(),
+          type: 'qualifying',
+          startedAt: Date.now(),
+          left: null,
+          right: { ...rightResult, riderId },
+        })
+      }
+    }
     resetRace()
     setPhase(returnPhase)
   }
