@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders } from '../store/event.store'
+import { useEventStore, selectRiders, selectGarrettEntries } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { Countdown } from '../components/Countdown'
+import { KeggersLeaderboard } from '../components/KeggersLeaderboard'
 import { useAudio } from '../hooks/useAudio'
 import type { LaneResult } from '@shared/types'
 
 export function FreePairRace() {
   const setPhase = useEventStore((s) => s.setPhase)
   const addQualifyingResult = useEventStore((s) => s.addQualifyingResult)
+  const addGarrettEntry = useEventStore((s) => s.addGarrettEntry)
   const addRider = useEventStore((s) => s.addRider)
   const riders = useEventStore(selectRiders)
+  const garrettEntries = useEventStore(selectGarrettEntries)
 
   const freePairRiders = useRaceStore((s) => s.freePairRiders)
   const raceStatus = useRaceStore((s) => s.race?.status ?? null)
@@ -99,16 +102,27 @@ export function FreePairRace() {
     return unsub
   }, [setLaneFinished, playFinishFanfare])
 
+  const garrettSavedRef = useRef(false)
+
   useEffect(() => {
     if (raceStatus !== 'finished') return
     window.electronAPI.stopRace()
-  }, [raceStatus])
+    if (garrettWeights && !garrettSavedRef.current) {
+      garrettSavedRef.current = true
+      const now = Date.now()
+      const leftResult = resultsRef.current['left']
+      const rightResult = resultsRef.current['right']
+      if (leftResult) addGarrettEntry({ name: leftName, weightKg: garrettWeights.left, maxWatts: leftResult.maxWatts, avgWatts: leftResult.avgWatts, racedAt: now })
+      if (rightResult) addGarrettEntry({ name: rightName, weightKg: garrettWeights.right, maxWatts: rightResult.maxWatts, avgWatts: rightResult.avgWatts, racedAt: now })
+    }
+  }, [raceStatus]) // eslint-disable-line
 
   useEffect(() => () => { if (countdownRef.current) clearTimeout(countdownRef.current) }, [])
 
   function startRace() {
     if (!leftName || !rightName) return
     fanfarePlayed.current = false
+    garrettSavedRef.current = false
     resultsRef.current = {}
     const raceId = nanoid()
     initRace(
@@ -337,6 +351,13 @@ export function FreePairRace() {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {garrettWeights && garrettEntries.length > 0 && (
+                <div className="w-72 bg-stone-950 rounded-xl p-4">
+                  <div className="text-xs text-stone-500 uppercase tracking-widest mb-2 text-center">Keggers</div>
+                  <KeggersLeaderboard entries={garrettEntries} highlightNames={[leftName, rightName]} />
                 </div>
               )}
 

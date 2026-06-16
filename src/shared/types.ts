@@ -69,6 +69,14 @@ export interface LaneResult {
   distanceMetres: number
 }
 
+export interface GarrettEntry {
+  name: string
+  weightKg: number
+  maxWatts: number
+  avgWatts: number
+  racedAt: number
+}
+
 export interface RaceResult {
   raceId: string
   type: 'qualifying' | 'bracket'
@@ -114,6 +122,7 @@ export interface EventData {
   bracket: BracketRound[]     // M bracket (or combined for non-gender events)
   bracketF: BracketRound[]    // Women's bracket
   bracketOpen: BracketRound[] // Riders without gender
+  garrettEntries: GarrettEntry[]
   currentRaceId: string | null
   phase: EventPhase
 }

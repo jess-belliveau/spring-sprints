@@ -8,7 +8,8 @@ import type {
   RaceResult,
   BracketRound,
   BracketMatch,
-  BracketPool
+  BracketPool,
+  GarrettEntry
 } from '@shared/types'
 import { DEFAULT_DISTANCE_METRES, BRACKET_SIZE } from '@shared/constants'
 
@@ -25,6 +26,7 @@ interface EventState {
   addQualifyingResult: (result: RaceResult) => void
   removeQualifyingResult: (riderId: string) => void
   addBracketResult: (result: RaceResult) => void
+  addGarrettEntry: (entry: GarrettEntry) => void
   moveRiderToEnd: (riderId: string) => void
   generateBracket: () => void
   generateCustomBracket: (names: string[]) => void
@@ -175,6 +177,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
       bracket: [],
       bracketF: [],
       bracketOpen: [],
+      garrettEntries: [],
       currentRaceId: null,
       phase: 'registration'
     }
@@ -182,7 +185,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
     window.electronAPI.saveEvent(event)
   },
 
-  setEvent: (event) => set({ event: { ...event, bracketF: event.bracketF ?? [], bracketOpen: event.bracketOpen ?? [], bracketResults: event.bracketResults ?? [] } }),
+  setEvent: (event) => set({ event: { ...event, bracketF: event.bracketF ?? [], bracketOpen: event.bracketOpen ?? [], bracketResults: event.bracketResults ?? [], garrettEntries: event.garrettEntries ?? [] } }),
 
   setPhase: (phase) =>
     set((s) => {
@@ -255,6 +258,15 @@ export const useEventStore = create<EventState>((set, _get) => ({
       if (!s.event) return s
       const bracketResults = [...s.event.bracketResults, result]
       const event = { ...s.event, bracketResults }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
+  addGarrettEntry: (entry) =>
+    set((s) => {
+      if (!s.event) return s
+      const garrettEntries = [...(s.event.garrettEntries ?? []), entry]
+      const event = { ...s.event, garrettEntries }
       window.electronAPI.saveEvent(event)
       return { event }
     }),
@@ -418,3 +430,6 @@ export const selectBracketResults = (s: EventState): RaceResult[] => s.event?.br
 export const selectConfig = (s: EventState): EventConfig => s.event?.config ?? EMPTY_CONFIG
 export const selectHasGenderSplit = (s: EventState): boolean =>
   s.event?.riders.some((r) => r.gender !== undefined) ?? false
+
+const EMPTY_GARRETT: GarrettEntry[] = []
+export const selectGarrettEntries = (s: EventState): GarrettEntry[] => s.event?.garrettEntries ?? EMPTY_GARRETT

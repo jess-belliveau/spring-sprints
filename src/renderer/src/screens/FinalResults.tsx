@@ -1,4 +1,5 @@
-import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, selectRiders, selectQualifyingResults, selectBracketResults, selectHasGenderSplit } from '../store/event.store'
+import { useEventStore, selectBracket, selectBracketF, selectBracketOpen, selectRiders, selectQualifyingResults, selectBracketResults, selectHasGenderSplit, selectGarrettEntries } from '../store/event.store'
+import { KeggersLeaderboard } from '../components/KeggersLeaderboard'
 import type { BracketRound, BracketPool, LaneResult, Rider, RaceResult } from '@shared/types'
 
 function formatTime(ms: number): string {
@@ -173,6 +174,7 @@ export function FinalResults() {
   const qualifyingResults = useEventStore(selectQualifyingResults)
   const bracketResults = useEventStore(selectBracketResults)
   const hasGenderSplit = useEventStore(selectHasGenderSplit)
+  const garrettEntries = useEventStore(selectGarrettEntries)
   const config = useEventStore((s) => s.event?.config)
   const reset = useEventStore((s) => s.reset)
 
@@ -271,6 +273,13 @@ export function FinalResults() {
               <div className="text-4xl font-mono font-bold text-amber-400 ml-2">{wattBomberOpen.maxWatts}W</div>
             </div>
           )}
+        </div>
+      )}
+
+      {garrettEntries.length > 0 && (
+        <div className="w-full max-w-xs mb-4">
+          <div className="text-xs text-stone-500 uppercase tracking-widest mb-2 text-center">Keggers</div>
+          <KeggersLeaderboard entries={garrettEntries} />
         </div>
       )}
 
