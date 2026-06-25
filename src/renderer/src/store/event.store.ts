@@ -27,6 +27,7 @@ interface EventState {
   removeQualifyingResult: (riderId: string) => void
   addBracketResult: (result: RaceResult) => void
   addGarrettEntry: (entry: GarrettEntry) => void
+  reorderRiders: (riders: Rider[]) => void
   moveRiderToEnd: (riderId: string) => void
   generateBracket: () => void
   generateCustomBracket: (names: string[]) => void
@@ -179,7 +180,7 @@ export const useEventStore = create<EventState>((set, _get) => ({
       bracketOpen: [],
       garrettEntries: [],
       currentRaceId: null,
-      phase: 'registration'
+      phase: 'qualifying'
     }
     set({ event })
     window.electronAPI.saveEvent(event)
@@ -267,6 +268,14 @@ export const useEventStore = create<EventState>((set, _get) => ({
       if (!s.event) return s
       const garrettEntries = [...(s.event.garrettEntries ?? []), entry]
       const event = { ...s.event, garrettEntries }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
+  reorderRiders: (riders) =>
+    set((s) => {
+      if (!s.event) return s
+      const event = { ...s.event, riders }
       window.electronAPI.saveEvent(event)
       return { event }
     }),

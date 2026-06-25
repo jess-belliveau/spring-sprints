@@ -42,15 +42,7 @@ export function DevicePairing() {
 
   return (
     <div className="flex flex-col h-full px-8 pt-8 gap-8">
-      <div className="flex items-center">
-        <button
-          onClick={() => { window.electronAPI.scanStop(); setPhase('registration') }}
-          className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
-        >
-          ← Riders
-        </button>
-      </div>
-      <h2 className="text-4xl font-black uppercase tracking-widest text-white text-center -mt-4">
+      <h2 className="text-4xl font-black uppercase tracking-widest text-white text-center">
         Device Pairing
       </h2>
 

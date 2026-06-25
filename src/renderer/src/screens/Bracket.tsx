@@ -112,12 +112,6 @@ export function Bracket() {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="px-8 pt-8 pb-4 flex items-center justify-between shrink-0">
-          <button
-            onClick={() => setPhase('registration')}
-            className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
-          >
-            ← Riders
-          </button>
           <h2 className="text-3xl font-black uppercase tracking-widest text-white">
             Tournament Bracket
           </h2>
