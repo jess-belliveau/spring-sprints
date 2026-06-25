@@ -3,9 +3,9 @@ import { Routes, Route, useNavigate } from 'react-router-dom'
 import { useIPCListeners } from './hooks/useIPCListeners'
 import { useTheme, type Theme } from './hooks/useTheme'
 import { useEventStore, selectPhase } from './store/event.store'
+import { DEFAULT_DISTANCE_METRES } from '@shared/constants'
 import { useBluetoothStore } from './store/bluetooth.store'
 import { Setup } from './screens/Setup'
-import { Registration } from './screens/Registration'
 import { DevicePairing } from './screens/DevicePairing'
 import { Qualifying } from './screens/Qualifying'
 import { QualifyingResults } from './screens/QualifyingResults'
@@ -18,7 +18,6 @@ import { DeviceManagerModal } from './components/DeviceManagerModal'
 
 const PHASE_ROUTES: Record<string, string> = {
   setup: '/',
-  registration: '/registration',
   'device-pairing': '/pairing',
   qualifying: '/qualifying',
   'qualifying-results': '/qualifying-results',
@@ -42,7 +41,7 @@ const THEMES: { value: Theme; label: string }[] = [
 
 function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   return (
-    <div className="fixed bottom-11 left-3 z-30 flex items-center gap-0.5 bg-stone-900 border border-stone-700 rounded-full px-1 py-1">
+    <div className="fixed bottom-3 right-3 z-30 flex items-center gap-0.5 bg-stone-900 border border-stone-700 rounded-full px-1 py-1">
       {THEMES.map((t) => (
         <button
           key={t.value}
@@ -87,12 +86,14 @@ function PhaseRouter() {
   const navigate = useNavigate()
   const phase = useEventStore(selectPhase)
   const setEvent = useEventStore((s) => s.setEvent)
+  const initEvent = useEventStore((s) => s.initEvent)
 
   useEffect(() => {
     window.electronAPI.loadEvent().then((event) => {
       if (event) setEvent(event)
+      else initEvent({ name: 'Sprint Event', distanceMetres: DEFAULT_DISTANCE_METRES })
     })
-  }, [setEvent])
+  }, [setEvent, initEvent])
 
   useEffect(() => {
     const route = PHASE_ROUTES[phase]
@@ -117,7 +118,6 @@ export default function App() {
         <ThemeToggle theme={theme} setTheme={setTheme} />
         <Routes>
           <Route path="/" element={<Setup />} />
-          <Route path="/registration" element={<Registration />} />
           <Route path="/pairing" element={<DevicePairing />} />
           <Route path="/qualifying" element={<Qualifying />} />
           <Route path="/qualifying-results" element={<QualifyingResults />} />

@@ -83,7 +83,7 @@ export function QualifyingResults() {
       <>
         <div className="flex flex-col h-full px-8 pt-8 gap-6">
           <div className="flex items-center justify-between">
-            <button onClick={() => setPhase('registration')} className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors">← Riders</button>
+            <div />
             <button onClick={() => setFreePairOpen(true)} className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 hover:border-stone-500 rounded px-3 py-1.5 uppercase tracking-widest transition-colors">Free Pair</button>
           </div>
           <h2 className="text-4xl font-black uppercase tracking-widest text-white text-center -mt-2">Qualifying Results</h2>

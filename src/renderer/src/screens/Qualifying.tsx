@@ -31,6 +31,8 @@ export function Qualifying() {
   const addQualifyingResult = useEventStore((s) => s.addQualifyingResult)
   const removeQualifyingResult = useEventStore((s) => s.removeQualifyingResult)
   const moveRiderToEnd = useEventStore((s) => s.moveRiderToEnd)
+  const reorderRiders = useEventStore((s) => s.reorderRiders)
+  const removeRider = useEventStore((s) => s.removeRider)
   const addRider = useEventStore((s) => s.addRider)
   const setPhase = useEventStore((s) => s.setPhase)
 
@@ -71,11 +73,24 @@ export function Qualifying() {
   const startCountdownRef = useRef<() => void>(() => {})
   const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const [demoStopped, setDemoStopped] = useState<Record<string, boolean>>({})
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [dragOverDelete, setDragOverDelete] = useState(false)
 
   function toggleDemoDevice(id: string) {
     const next = !demoStopped[id]
     setDemoStopped((prev) => ({ ...prev, [id]: next }))
     window.electronAPI.setDemoStopped(id, next)
+  }
+
+  function handleQueueDrop(fromId: string, toId: string) {
+    const fromIdx = remaining.findIndex((r) => r.id === fromId)
+    const toIdx = remaining.findIndex((r) => r.id === toId)
+    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return
+    const next = [...remaining]
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    reorderRiders([...riders.filter((r) => completedIds.has(r.id)), ...next])
   }
 
   const raceIdRef = useRef<string>('')
@@ -258,7 +273,7 @@ export function Qualifying() {
       setAddError('Name already registered')
       return
     }
-    addRider({ id: nanoid(), name, gender: anyGender ? addGender : undefined })
+    addRider({ id: nanoid(), name, gender: addGender })
     setAddName('')
     setAddError('')
   }
@@ -310,21 +325,23 @@ export function Qualifying() {
         <div className="flex items-center gap-6">
           {isIdle && !showResult && (
             <button
-              onClick={() => setPhase('registration')}
+              onClick={() => {
+                if (window.confirm('Exit qualifying? The current rider list will be lost.')) {
+                  setPhase('setup')
+                }
+              }}
               className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
             >
-              ← Riders
+              ← Exit
             </button>
           )}
           <div>
-            <div className="text-xs text-stone-500 uppercase tracking-widest">Qualifying</div>
+            <div className="text-xs text-stone-500 uppercase tracking-widest">Qualifying · {config.distanceMetres}m</div>
             <div className="text-white text-xl font-bold">{currentRider?.name ?? 'All done'}</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {import.meta.env.DEV && (
-            <>
-              <button
+          <button
                 onClick={() => setFalseStartEnabled((v) => !v)}
                 className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
                   falseStartEnabled
@@ -379,8 +396,26 @@ export function Qualifying() {
               >
                 ⚡ Sim All
               </button>
-            </>
-          )}
+              <button
+                onClick={() => {
+                  const seeds: { name: string; gender: 'M' | 'F' }[] = [
+                    { name: 'Alice', gender: 'F' }, { name: 'Bob', gender: 'M' },
+                    { name: 'Carol', gender: 'F' }, { name: 'Dave', gender: 'M' },
+                    { name: 'Eve', gender: 'F' }, { name: 'Frank', gender: 'M' },
+                    { name: 'Grace', gender: 'F' }, { name: 'Hank', gender: 'M' },
+                    { name: 'Ivy', gender: 'F' }, { name: 'Jack', gender: 'M' },
+                    { name: 'Karen', gender: 'F' }, { name: 'Leo', gender: 'M' },
+                    { name: 'Mia', gender: 'F' }, { name: 'Ned', gender: 'M' },
+                    { name: 'Olivia', gender: 'F' }, { name: 'Pete', gender: 'M' },
+                    { name: 'Quinn', gender: 'F' }, { name: 'Rose', gender: 'F' },
+                    { name: 'Sam', gender: 'M' }, { name: 'Tara', gender: 'F' },
+                  ]
+                  seeds.forEach(({ name, gender }) => addRider({ id: nanoid(), name, gender }))
+                }}
+                className="text-xs border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white rounded px-2 py-1 uppercase tracking-widest transition-colors"
+              >
+                Seed 20
+              </button>
           <button
             onClick={() => setBuzzerEnabled((v) => !v)}
             className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
@@ -443,7 +478,7 @@ export function Qualifying() {
               </button>
             </div>
           )}
-          {twoLeaderboards && isIdle && !showResult && !currentRider && (
+          {twoLeaderboards && isIdle && !showResult && !currentRider && existingResults.length > 0 && (
             <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-3">
               <div className="text-green-400 text-sm font-bold uppercase tracking-widest">All done!</div>
               <button
@@ -455,6 +490,21 @@ export function Qualifying() {
             </div>
           )}
           <div className="px-4 pt-4 pb-2 text-xs text-stone-500 uppercase tracking-widest">Up Next</div>
+          {/* Delete zone lives outside the scroll container so its appearance doesn't shift rider rows */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOverDelete(true); setDragOverId(null) }}
+            onDragLeave={() => setDragOverDelete(false)}
+            onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) removeRider(id); setDraggedId(null); setDragOverDelete(false) }}
+            className={`mx-2 rounded border border-dashed text-xs uppercase tracking-widest text-center transition-all duration-150 ${
+              draggedId
+                ? dragOverDelete
+                  ? 'px-3 py-2 mb-1 border-red-500 text-red-400 bg-red-950/40'
+                  : 'px-3 py-2 mb-1 border-stone-700 text-stone-600'
+                : 'h-0 overflow-hidden border-transparent'
+            }`}
+          >
+            {dragOverDelete ? 'Release to remove' : 'Drag here to remove'}
+          </div>
           <div className="flex-1 overflow-y-auto px-2 pb-4">
             {remaining.length === 0 ? (
               <p className="text-stone-700 text-xs text-center py-6">All riders done</p>
@@ -462,10 +512,22 @@ export function Qualifying() {
               <div className="flex flex-col gap-1">
                 {remaining.map((rider, i) => {
                   const isCurrent = i === 0
+                  const isDragging = draggedId === rider.id
+                  const isOver = dragOverId === rider.id && draggedId !== rider.id
                   return (
                     <div
                       key={rider.id}
-                      className={`flex items-center gap-2 rounded px-3 py-2 border ${isCurrent ? 'accent-tint' : 'bg-stone-900 border-transparent'}`}
+                      draggable={isIdle && !showResult}
+                      onDragStart={(e) => { e.dataTransfer.setData('text/plain', rider.id); e.dataTransfer.effectAllowed = 'move'; setDraggedId(rider.id); setDragOverDelete(false) }}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(rider.id); setDragOverDelete(false) }}
+                      onDragLeave={() => setDragOverId(null)}
+                      onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId && fromId !== rider.id) handleQueueDrop(fromId, rider.id); setDraggedId(null); setDragOverId(null) }}
+                      onDragEnd={() => { setDraggedId(null); setDragOverId(null); setDragOverDelete(false) }}
+                      className={`flex items-center gap-2 rounded px-3 py-2 border transition-colors ${
+                        isDragging ? 'opacity-40' :
+                        isOver ? 'border-[var(--accent)] bg-stone-800' :
+                        isCurrent ? 'accent-tint' : 'bg-stone-900 border-transparent'
+                      } ${isIdle && !showResult ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     >
                       <span className={`text-xs font-bold w-4 shrink-0 ${isCurrent ? 'text-[var(--accent)]' : 'text-stone-600'}`}>
                         {i + 1}
@@ -522,7 +584,7 @@ export function Qualifying() {
             </div>
           )}
 
-          {!twoLeaderboards && isIdle && !showResult && !currentRider && (
+          {!twoLeaderboards && isIdle && !showResult && !currentRider && existingResults.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
                 <div className="text-green-400 text-2xl font-bold uppercase tracking-widest">All riders done!</div>
@@ -706,8 +768,7 @@ export function Qualifying() {
               />
               {addError && <p className="absolute text-red-400 text-xs mt-0.5">{addError}</p>}
             </div>
-            {anyGender && (
-              <div className="flex rounded border border-stone-700 overflow-hidden shrink-0">
+            <div className="flex rounded border border-stone-700 overflow-hidden shrink-0">
                 <button
                   onClick={() => setAddGender('M')}
                   className={`px-2 py-2 text-xs font-bold transition-colors ${addGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500'}`}
@@ -717,7 +778,6 @@ export function Qualifying() {
                   className={`px-2 py-2 text-xs font-bold border-l border-stone-700 transition-colors ${addGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500'}`}
                 >F</button>
               </div>
-            )}
             <button
               onClick={handleAddRider}
               disabled={!addName.trim()}
