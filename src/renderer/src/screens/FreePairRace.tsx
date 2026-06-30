@@ -4,6 +4,7 @@ import { useEventStore, selectRiders, selectGarrettEntries } from '../store/even
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
+import { LineSplitDisplay } from '../components/LineSplitDisplay'
 import { Countdown } from '../components/Countdown'
 import { KeggersLeaderboard } from '../components/KeggersLeaderboard'
 import { useAudio } from '../hooks/useAudio'
@@ -35,6 +36,7 @@ export function FreePairRace() {
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
+  const [displayFormat, setDisplayFormat] = useState<'line' | 'circle'>('circle')
   const [isFalseStart, setIsFalseStart] = useState(false)
   const [falseStartRiderName, setFalseStartRiderName] = useState('')
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
@@ -243,6 +245,12 @@ export function FreePairRace() {
           <span className="text-[var(--lane-right)]">{rightName}</span>
         </span>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setDisplayFormat((f) => f === 'line' ? 'circle' : 'line')}
+            className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+          >
+            {displayFormat === 'line' ? '◎ Circle' : '▬ Line'}
+          </button>
           {import.meta.env.DEV && (
             <button
               onClick={() => setFalseStartEnabled((v) => !v)}
@@ -287,12 +295,20 @@ export function FreePairRace() {
       <div className="flex-1 relative">
         {raceStatus !== null && !isFalseStart && (
           <div className="absolute inset-0 flex">
-            <TrackDisplay
-              left={{ riderName: leftName }}
-              right={{ riderName: rightName }}
-              targetDistance={distance}
-              garrettWeights={garrettWeights}
-            />
+            {displayFormat === 'circle' ? (
+              <TrackDisplay
+                left={{ riderName: leftName }}
+                right={{ riderName: rightName }}
+                targetDistance={distance}
+                garrettWeights={garrettWeights}
+              />
+            ) : (
+              <LineSplitDisplay
+                left={{ riderName: leftName }}
+                right={{ riderName: rightName }}
+                targetDistance={distance}
+              />
+            )}
           </div>
         )}
 

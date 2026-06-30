@@ -4,6 +4,7 @@ import { useEventStore, selectRiders, selectBracket, selectBracketF, selectBrack
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
+import { LineSplitDisplay } from '../components/LineSplitDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
 import type { LaneResult, BracketPool } from '@shared/types'
@@ -38,6 +39,7 @@ export function HeadToHead() {
   const internalRaceIdRef = useRef<string>('')
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
+  const [displayFormat, setDisplayFormat] = useState<'line' | 'circle'>('circle')
   const [isFalseStart, setIsFalseStart] = useState(false)
   const [falseStartRiderName, setFalseStartRiderName] = useState('')
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
@@ -221,6 +223,12 @@ export function HeadToHead() {
           <span className="text-[var(--lane-right)]">{rightRider.name}</span>
         </span>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setDisplayFormat((f) => f === 'line' ? 'circle' : 'line')}
+            className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+          >
+            {displayFormat === 'line' ? '◎ Circle' : '▬ Line'}
+          </button>
           {import.meta.env.DEV && (
             <>
               <button
@@ -273,11 +281,19 @@ export function HeadToHead() {
       <div className="flex-1 relative">
         {raceStatus !== null && !isFalseStart && (
           <div className="absolute inset-0 flex">
-            <TrackDisplay
-              left={leftRider ? { riderName: leftRider.name } : null}
-              right={rightRider ? { riderName: rightRider.name } : null}
-              targetDistance={config.distanceMetres}
-            />
+            {displayFormat === 'circle' ? (
+              <TrackDisplay
+                left={leftRider ? { riderName: leftRider.name } : null}
+                right={rightRider ? { riderName: rightRider.name } : null}
+                targetDistance={config.distanceMetres}
+              />
+            ) : (
+              <LineSplitDisplay
+                left={leftRider ? { riderName: leftRider.name } : null}
+                right={rightRider ? { riderName: rightRider.name } : null}
+                targetDistance={config.distanceMetres}
+              />
+            )}
           </div>
         )}
 
