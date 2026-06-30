@@ -8,6 +8,9 @@ import { FreePairModal } from '../components/FreePairModal'
 import type { FreePairStartData } from '../components/FreePairModal'
 import type { BracketMatch, BracketRound, BracketPool, Rider } from '@shared/types'
 
+// Persists across Bracket unmount/remount (route navigation) within a session
+let lastBracketPool: BracketPool | null = null
+
 function findNextMatchByRound(rounds: BracketRound[]): { match: BracketMatch; round: number } | null {
   for (let r = 0; r < rounds.length; r++) {
     for (const match of rounds[r].matches) {
@@ -52,17 +55,37 @@ export function Bracket() {
   const nextF = findNextMatchByRound(bracketF)
   const nextOpen = findNextMatchByRound(bracketOpen)
 
-  // Pick the lowest round index with any ready match, then first bracket at that round (M → F → Open).
-  // This ensures all QFs run before any SFs, all SFs before the finals, across all pools.
+  // Pick the lowest round with any ready match. Within a round, alternate M ↔ F so neither
+  // gender runs back-to-back. Fall back to Open when only one pool has a match at that round.
   const minRound = Math.min(nextM?.round ?? Infinity, nextF?.round ?? Infinity, nextOpen?.round ?? Infinity)
-  const nextEntry = isFinite(minRound)
-    ? (nextM?.round === minRound ? nextM : nextF?.round === minRound ? nextF : nextOpen!)
-    : null
+  function pickNextEntry() {
+    if (!isFinite(minRound)) return null
+    const mReady = nextM?.round === minRound
+    const fReady = nextF?.round === minRound
+    if (mReady && fReady) {
+      // Alternate: if last was M pick F, otherwise pick M
+      return lastBracketPool === 'M' ? nextF! : nextM!
+    }
+    if (mReady) return nextM!
+    if (fReady) return nextF!
+    return nextOpen ?? null
+  }
+  const nextEntry = pickNextEntry()
   const nextMatch = nextEntry?.match ?? null
-  const nextPool: BracketPool = nextM?.round === minRound ? 'M' : nextF?.round === minRound ? 'F' : 'Open'
+  function pickNextPool(): BracketPool {
+    if (!isFinite(minRound)) return 'Open'
+    const mReady = nextM?.round === minRound
+    const fReady = nextF?.round === minRound
+    if (mReady && fReady) return lastBracketPool === 'M' ? 'F' : 'M'
+    if (mReady) return 'M'
+    if (fReady) return 'F'
+    return 'Open'
+  }
+  const nextPool: BracketPool = pickNextPool()
 
   function handleStartMatch() {
     if (!nextMatch) return
+    lastBracketPool = nextPool
     setCurrentRaceId(nextMatch.id)
     setPhase('head-to-head')
   }
@@ -257,6 +280,7 @@ export function Bracket() {
                   <div className="flex gap-4">
                     <button
                       onClick={() => {
+                        lastBracketPool = nextPool
                         advanceBracket(nextMatch.id, nextMatch.topRiderId!, nanoid(), nextPool)
                         setDeclaringWinner(false)
                       }}
@@ -266,6 +290,7 @@ export function Bracket() {
                     </button>
                     <button
                       onClick={() => {
+                        lastBracketPool = nextPool
                         advanceBracket(nextMatch.id, nextMatch.bottomRiderId!, nanoid(), nextPool)
                         setDeclaringWinner(false)
                       }}
