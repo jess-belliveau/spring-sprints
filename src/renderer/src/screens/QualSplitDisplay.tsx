@@ -19,67 +19,56 @@ function Panel({
   riderName,
   side,
   barRef,
-  distRef,
   wattsRef,
-  cadenceRef,
   timeRef,
   finishedRef,
-  targetDistance,
 }: {
   riderName: string
   side: 'left' | 'right'
   barRef: RefObject<HTMLDivElement>
-  distRef: RefObject<HTMLSpanElement>
   wattsRef: RefObject<HTMLSpanElement>
-  cadenceRef: RefObject<HTMLSpanElement>
   timeRef: RefObject<HTMLSpanElement>
   finishedRef: RefObject<HTMLDivElement>
-  targetDistance: number
 }) {
   const color = side === 'left' ? 'var(--lane-left)' : 'var(--lane-right)'
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-12 py-8">
-      <div className="text-4xl font-black uppercase tracking-widest truncate max-w-full" style={{ color }}>
-        {riderName}
-      </div>
+  const isLeft = side === 'left'
 
-      <div className="w-full">
-        <div className="w-full h-5 bg-stone-800 rounded-full overflow-hidden">
-          <div
-            ref={barRef}
-            className="h-full rounded-full"
-            style={{ width: '0%', backgroundColor: color, transition: 'none' }}
-          />
-        </div>
-        <div className="mt-1 flex justify-between text-xs text-stone-600 uppercase tracking-widest">
-          <span>0m</span>
-          <span>{targetDistance}m</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col items-center gap-3">
-        <div className="text-8xl font-black tabular-nums text-white leading-none">
-          <span ref={distRef}>0</span>
-          <span className="text-4xl text-stone-500"> m</span>
-        </div>
-        <div className="text-6xl font-bold tabular-nums text-amber-400 leading-none">
-          <span ref={wattsRef}>0</span>
-          <span className="text-2xl text-stone-400"> W</span>
-        </div>
-        <div className="text-4xl font-bold tabular-nums text-stone-300 leading-none">
-          <span ref={cadenceRef}>0</span>
-          <span className="text-xl text-stone-500"> rpm</span>
-        </div>
-        <span ref={timeRef} className="text-3xl font-mono text-stone-500">0:00.00</span>
-      </div>
-
+  const bar = (
+    <div className="w-[72px] self-stretch bg-stone-800 relative overflow-hidden shrink-0">
       <div
-        ref={finishedRef}
-        className="text-2xl font-bold text-green-400 tracking-widest uppercase"
-        style={{ display: 'none' }}
-      >
-        ✓ Finished
+        ref={barRef}
+        className="absolute bottom-0 inset-x-0"
+        style={{ height: '0%', backgroundColor: color, transition: 'none' }}
+      />
+    </div>
+  )
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {!isLeft && bar}
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 px-10 py-8">
+        <div className="text-3xl font-black uppercase tracking-widest truncate max-w-full" style={{ color }}>
+          {riderName}
+        </div>
+
+        <span ref={timeRef} className="text-8xl font-black tabular-nums text-white leading-none">
+          0:00.00
+        </span>
+
+        <div className="leading-none">
+          <span ref={wattsRef} className="text-4xl font-bold tabular-nums text-amber-400">0</span>
+          <span className="text-xl text-stone-400"> W</span>
+        </div>
+
+        <div
+          ref={finishedRef}
+          className="text-2xl font-bold text-green-400 tracking-widest uppercase"
+          style={{ display: 'none' }}
+        >
+          ✓ Finished
+        </div>
       </div>
+      {isLeft && bar}
     </div>
   )
 }
@@ -125,15 +114,11 @@ export function QualSplitDisplay() {
 
   // Refs for live telemetry display
   const leftBarRef = useRef<HTMLDivElement>(null)
-  const leftDistRef = useRef<HTMLSpanElement>(null)
   const leftWattsRef = useRef<HTMLSpanElement>(null)
-  const leftCadenceRef = useRef<HTMLSpanElement>(null)
   const leftTimeRef = useRef<HTMLSpanElement>(null)
   const leftFinishedRef = useRef<HTMLDivElement>(null)
   const rightBarRef = useRef<HTMLDivElement>(null)
-  const rightDistRef = useRef<HTMLSpanElement>(null)
   const rightWattsRef = useRef<HTMLSpanElement>(null)
-  const rightCadenceRef = useRef<HTMLSpanElement>(null)
   const rightTimeRef = useRef<HTMLSpanElement>(null)
   const rightFinishedRef = useRef<HTMLDivElement>(null)
   const leftPhysRef = useRef({ pos: 0, vel: 0, ts: 0 })
@@ -181,10 +166,8 @@ export function QualSplitDisplay() {
         if (newPos !== lp.pos || newVel !== lp.vel) {
           leftPhysRef.current = { pos: newPos, vel: newVel, ts: now }
         }
-        if (leftDistRef.current)    leftDistRef.current.textContent    = String(Math.round(l.distanceCovered))
-        if (leftWattsRef.current)   leftWattsRef.current.textContent   = String(l.instantWatts)
-        if (leftCadenceRef.current) leftCadenceRef.current.textContent = String(l.cadenceRpm)
-        if (leftTimeRef.current)    leftTimeRef.current.textContent    = fmt(l.elapsedMs)
+        if (leftWattsRef.current)    leftWattsRef.current.textContent   = String(l.instantWatts)
+        if (leftTimeRef.current)     leftTimeRef.current.textContent    = fmt(l.elapsedMs)
         if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
       }
 
@@ -195,10 +178,8 @@ export function QualSplitDisplay() {
         if (newPos !== rp.pos || newVel !== rp.vel) {
           rightPhysRef.current = { pos: newPos, vel: newVel, ts: now }
         }
-        if (rightDistRef.current)    rightDistRef.current.textContent    = String(Math.round(r.distanceCovered))
-        if (rightWattsRef.current)   rightWattsRef.current.textContent   = String(r.instantWatts)
-        if (rightCadenceRef.current) rightCadenceRef.current.textContent = String(r.cadenceRpm)
-        if (rightTimeRef.current)    rightTimeRef.current.textContent    = fmt(r.elapsedMs)
+        if (rightWattsRef.current)    rightWattsRef.current.textContent   = String(r.instantWatts)
+        if (rightTimeRef.current)     rightTimeRef.current.textContent    = fmt(r.elapsedMs)
         if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
       }
     })
@@ -212,8 +193,8 @@ export function QualSplitDisplay() {
       const rDt = rPhys.ts > 0 ? Math.min((now - rPhys.ts) / 1000, MAX_EXTRAP_S) : 0
       const leftPct  = Math.min(1, (lPhys.pos + lPhys.vel * lDt) / dist)
       const rightPct = Math.min(1, (rPhys.pos + rPhys.vel * rDt) / dist)
-      if (leftBarRef.current)  leftBarRef.current.style.width  = `${leftPct  * 100}%`
-      if (rightBarRef.current) rightBarRef.current.style.width = `${rightPct * 100}%`
+      if (leftBarRef.current)  leftBarRef.current.style.height = `${leftPct  * 100}%`
+      if (rightBarRef.current) rightBarRef.current.style.height = `${rightPct * 100}%`
       rafRef.current = requestAnimationFrame(tick)
     }
 
@@ -398,28 +379,19 @@ export function QualSplitDisplay() {
             riderName={leftRiderName}
             side="left"
             barRef={leftBarRef}
-            distRef={leftDistRef}
             wattsRef={leftWattsRef}
-            cadenceRef={leftCadenceRef}
             timeRef={leftTimeRef}
             finishedRef={leftFinishedRef}
-            targetDistance={qualRiders.distance}
           />
           {rightRiderName && (
-            <>
-              <div className="w-px bg-stone-800 self-stretch" />
-              <Panel
-                riderName={rightRiderName}
-                side="right"
-                barRef={rightBarRef}
-                distRef={rightDistRef}
-                wattsRef={rightWattsRef}
-                cadenceRef={rightCadenceRef}
-                timeRef={rightTimeRef}
-                finishedRef={rightFinishedRef}
-                targetDistance={qualRiders.distance}
-              />
-            </>
+            <Panel
+              riderName={rightRiderName}
+              side="right"
+              barRef={rightBarRef}
+              wattsRef={rightWattsRef}
+              timeRef={rightTimeRef}
+              finishedRef={rightFinishedRef}
+            />
           )}
         </div>
 
