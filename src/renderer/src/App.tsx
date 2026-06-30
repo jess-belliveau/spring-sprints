@@ -8,6 +8,7 @@ import { useBluetoothStore } from './store/bluetooth.store'
 import { Setup } from './screens/Setup'
 import { DevicePairing } from './screens/DevicePairing'
 import { Qualifying } from './screens/Qualifying'
+import { QualSplitDisplay } from './screens/QualSplitDisplay'
 import { QualifyingResults } from './screens/QualifyingResults'
 import { Bracket } from './screens/Bracket'
 import { HeadToHead } from './screens/HeadToHead'
@@ -20,6 +21,7 @@ const PHASE_ROUTES: Record<string, string> = {
   setup: '/',
   'device-pairing': '/pairing',
   qualifying: '/qualifying',
+  'qualifying-race': '/qualifying-race',
   'qualifying-results': '/qualifying-results',
   bracket: '/bracket',
   'head-to-head': '/headtohead',
@@ -120,6 +122,7 @@ export default function App() {
           <Route path="/" element={<Setup />} />
           <Route path="/pairing" element={<DevicePairing />} />
           <Route path="/qualifying" element={<Qualifying />} />
+          <Route path="/qualifying-race" element={<QualSplitDisplay />} />
           <Route path="/qualifying-results" element={<QualifyingResults />} />
           <Route path="/bracket" element={<Bracket />} />
           <Route path="/headtohead" element={<HeadToHead />} />

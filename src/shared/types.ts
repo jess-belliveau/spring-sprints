@@ -5,6 +5,7 @@ export type EventPhase =
   | 'registration'
   | 'device-pairing'
   | 'qualifying'
+  | 'qualifying-race'
   | 'qualifying-results'
   | 'bracket'
   | 'head-to-head'

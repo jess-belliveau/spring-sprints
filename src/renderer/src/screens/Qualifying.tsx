@@ -1,16 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import { useEventStore, selectRiders, selectConfig, selectQualifyingResults } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
 import type { FreePairStartData } from '../components/FreePairModal'
 import { useBluetoothStore } from '../store/bluetooth.store'
-import { TrackDisplay } from '../components/TrackDisplay'
-import { Countdown } from '../components/Countdown'
-import { useAudio } from '../hooks/useAudio'
-import { BRACKET_SIZE, DEMO_DEVICE_IDS } from '@shared/constants'
 import { WattBomber } from '../components/WattBomber'
-import type { RaceResult, LaneResult, Rider } from '@shared/types'
+import { BRACKET_SIZE, DEMO_DEVICE_IDS } from '@shared/constants'
+import type { Rider } from '@shared/types'
 
 type LbPool = 'M' | 'F' | 'Open'
 
@@ -35,76 +32,39 @@ export function Qualifying() {
   const removeRider = useEventStore((s) => s.removeRider)
   const addRider = useEventStore((s) => s.addRider)
   const setPhase = useEventStore((s) => s.setPhase)
-
-  const raceStatus = useRaceStore((s) => s.race?.status ?? null)
-  const countdownValue = useRaceStore((s) => s.race?.countdownValue ?? 0)
-  const initRace = useRaceStore((s) => s.initRace)
-  const setCountdown = useRaceStore((s) => s.setCountdown)
-  const setRacing = useRaceStore((s) => s.setRacing)
-  const setLaneFinished = useRaceStore((s) => s.setLaneFinished)
-  const resetRace = useRaceStore((s) => s.resetRace)
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
+  const setQualRiders = useRaceStore((s) => s.setQualRiders)
 
   const connectedDevices = useBluetoothStore((s) => s.connectedDevices)
-  const deviceLabels = useBluetoothStore((s) => s.deviceLabels)
   const leftReady = connectedDevices['left']?.status === 'connected'
   const rightReady = connectedDevices['right']?.status === 'connected'
   const bothConnected = leftReady && rightReady
 
-  const { playCountdownBeep, playFinishFanfare, playBuzzer } = useAudio()
-
-  const completedIds = new Set(existingResults.map((r) => r.left?.riderId ?? r.right?.riderId))
+  const completedIds = new Set(
+    existingResults.flatMap((r) =>
+      [r.left?.riderId, r.right?.riderId].filter((id): id is string => !!id)
+    )
+  )
   const remaining = riders.filter((r) => !completedIds.has(r.id))
-  const currentRider = remaining[0] ?? null
+  const riderA = remaining[0] ?? null
+  const riderB = remaining[1] ?? null
+  const isSolo = riderA !== null && riderB === null
+
+  const canStart = isSolo ? (leftReady || rightReady) : bothConnected
 
   const [freePairOpen, setFreePairOpen] = useState(false)
-  const [showResult, setShowResult] = useState(false)
-  const [finishResult, setFinishResult] = useState<LaneResult | null>(null)
   const [addName, setAddName] = useState('')
   const [addGender, setAddGender] = useState<'M' | 'F'>('M')
   const [addError, setAddError] = useState('')
-  const [isFalseStart, setIsFalseStart] = useState(false)
-  const [falseStartRiderName, setFalseStartRiderName] = useState('')
-  const [buzzerEnabled, setBuzzerEnabled] = useState(true)
-  const buzzerEnabledRef = useRef(true)
-  buzzerEnabledRef.current = buzzerEnabled
-  const falseStartFiredRef = useRef(false)
-  const handleFalseStartRef = useRef<((name: string) => void) | null>(null)
-  const startCountdownRef = useRef<() => void>(() => {})
-  const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const [demoStopped, setDemoStopped] = useState<Record<string, boolean>>({})
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [dragOverDelete, setDragOverDelete] = useState(false)
 
-  function toggleDemoDevice(id: string) {
-    const next = !demoStopped[id]
-    setDemoStopped((prev) => ({ ...prev, [id]: next }))
-    window.electronAPI.setDemoStopped(id, next)
-  }
-
-  function handleQueueDrop(fromId: string, toId: string) {
-    const fromIdx = remaining.findIndex((r) => r.id === fromId)
-    const toIdx = remaining.findIndex((r) => r.id === toId)
-    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return
-    const next = [...remaining]
-    const [moved] = next.splice(fromIdx, 1)
-    next.splice(toIdx, 0, moved)
-    reorderRiders([...riders.filter((r) => completedIds.has(r.id)), ...next])
-  }
-
-  const raceIdRef = useRef<string>('')
-  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const finishHandledRef = useRef(false)
-  const currentRiderRef = useRef(currentRider)
-  currentRiderRef.current = currentRider
-  const falseStartEnabledRef = useRef(falseStartEnabled)
-  falseStartEnabledRef.current = falseStartEnabled
-  const WATT_THRESHOLD = 10
-
-  const raceLaneRef = useRef<'left' | 'right'>('left')
-  const [detectedLane, setDetectedLane] = useState<'left' | 'right' | null>(null)
-  const [isChoosingBike, setIsChoosingBike] = useState(false)
+  const riderARef = useRef(riderA)
+  riderARef.current = riderA
+  const riderBRef = useRef(riderB)
+  riderBRef.current = riderB
 
   const anyGender = riders.some((r) => r.gender)
   const availablePools: LbPool[] = []
@@ -127,143 +87,34 @@ export function Qualifying() {
     })
   }
 
-  // Non-reactive: false-start detection
-  useEffect(() => {
-    return useRaceStore.subscribe((state) => {
-      const lw = state.race?.left?.instantWatts ?? 0
-      const rw = state.race?.right?.instantWatts ?? 0
-      const isCountdown = state.race?.status === 'countdown' && (state.race?.countdownValue ?? 1) > 0
-      if (falseStartEnabledRef.current && isCountdown && !falseStartFiredRef.current) {
-        const detWatts = raceLaneRef.current === 'left' ? lw : rw
-        if (detWatts > WATT_THRESHOLD) {
-          falseStartFiredRef.current = true
-          handleFalseStartRef.current?.(state.race?.[raceLaneRef.current]?.riderName ?? '')
-        }
-      }
-    })
-  }, [])
-
-  useEffect(() => {
-    if (raceStatus === 'finished' && !finishHandledRef.current) {
-      finishHandledRef.current = true
-      playFinishFanfare()
-      setShowResult(true)
-      window.electronAPI.stopRace()
-    }
-  }, [raceStatus, playFinishFanfare])
-
-  useEffect(() => {
-    const unsub = window.electronAPI.onRaceFinished(({ lane, result }) => {
-      if (lane !== raceLaneRef.current) return
-      if (!currentRiderRef.current) return
-      const laneResult = { ...result, riderId: currentRiderRef.current.id }
-      setLaneFinished(raceLaneRef.current, laneResult)
-      setFinishResult(laneResult)
-    })
-    return unsub
-  }, [setLaneFinished])
-
-  function startRaceOnLane(lane: 'left' | 'right') {
-    if (!currentRiderRef.current) return
-    raceLaneRef.current = lane
-    finishHandledRef.current = false
-    setShowResult(false)
-    const raceId = nanoid()
-    raceIdRef.current = raceId
-    initRace(
-      raceId,
-      lane === 'left' ? { riderId: currentRiderRef.current.id, riderName: currentRiderRef.current.name } : null,
-      lane === 'right' ? { riderId: currentRiderRef.current.id, riderName: currentRiderRef.current.name } : null
-    )
-    window.electronAPI.startRace(raceId, config.distanceMetres, [lane])
-    startCountdownRef.current()
+  function toggleDemoDevice(id: string) {
+    const next = !demoStopped[id]
+    setDemoStopped((prev) => ({ ...prev, [id]: next }))
+    window.electronAPI.setDemoStopped(id, next)
   }
 
-  // Updated every render so the subscription callback always has the latest version
-  startCountdownRef.current = () => {
-    let count = 3
-    setCountdown(count)
-    playCountdownBeep(count)
-    let lastAt = performance.now()
-    function tick() {
-      count -= 1
-      const now = performance.now()
-      const drift = now - lastAt - 1000
-      lastAt = now
-      if (count > 0) {
-        setCountdown(count); playCountdownBeep(count)
-        countdownRef.current = setTimeout(tick, Math.max(0, 1000 - drift))
-      } else {
-        setCountdown(0); playCountdownBeep(0)
-        window.electronAPI.raceGo()
-        countdownRef.current = setTimeout(() => setRacing(), 800)
-      }
-    }
-    countdownRef.current = setTimeout(tick, 1000)
-    // Reset AFTER setting the timer so a synchronous Zustand subscription fire
-    // (triggered by setCountdown above) doesn't immediately re-trigger a false start
-    // before countdownRef.current is properly set.
-    falseStartFiredRef.current = false
-  }
-
-  handleFalseStartRef.current = (riderName: string) => {
-    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
-    setIsFalseStart(true)
-    setFalseStartRiderName(riderName)
-    if (buzzerEnabledRef.current) playBuzzer()
-    countdownRef.current = setTimeout(() => {
-      setIsFalseStart(false)
-      startCountdownRef.current()
-    }, 1000)
+  function handleQueueDrop(fromId: string, toId: string) {
+    const fromIdx = remaining.findIndex((r) => r.id === fromId)
+    const toIdx = remaining.findIndex((r) => r.id === toId)
+    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return
+    const next = [...remaining]
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    reorderRiders([...riders.filter((r) => completedIds.has(r.id)), ...next])
   }
 
   function startRace() {
-    if (!currentRider) return
-    if (bothConnected && detectedLane === null) {
-      setIsChoosingBike(true)
-    } else {
-      startRaceOnLane(detectedLane ?? (leftReady ? 'left' : 'right'))
-    }
-  }
-
-  function handleBikeChosen(lane: 'left' | 'right') {
-    setIsChoosingBike(false)
-    setDetectedLane(lane)
-    startRaceOnLane(lane)
-  }
-
-  function saveAndAdvance() {
-    if (!finishResult || !currentRider) return
-    const lane = raceLaneRef.current
-    const raceResult: RaceResult = {
-      raceId: raceIdRef.current,
-      type: 'qualifying',
-      startedAt: Date.now(),
-      left: lane === 'left' ? finishResult : null,
-      right: lane === 'right' ? finishResult : null
-    }
-    addQualifyingResult(raceResult)
-    resetRace()
-    setFinishResult(null)
-    setShowResult(false)
-    finishHandledRef.current = false
-    setDetectedLane(null)
-    raceLaneRef.current = 'left'
-    setIsFalseStart(false)
-    falseStartFiredRef.current = false
-  }
-
-  function handleRetry() {
-    if (!currentRider) return
-    moveRiderToEnd(currentRider.id)
-    resetRace()
-    setFinishResult(null)
-    setShowResult(false)
-    finishHandledRef.current = false
-    setDetectedLane(null)
-    raceLaneRef.current = 'left'
-    setIsFalseStart(false)
-    falseStartFiredRef.current = false
+    const a = riderARef.current
+    const b = riderBRef.current
+    if (!a) return
+    setQualRiders({
+      leftRiderId: a.id,
+      leftName: a.name,
+      rightRiderId: b?.id ?? null,
+      rightName: b?.name ?? null,
+      distance: config.distanceMetres,
+    })
+    setPhase('qualifying-race')
   }
 
   function handleAddRider() {
@@ -295,156 +146,112 @@ export function Qualifying() {
     setPhase('free-pair')
   }
 
-  function handleAbort() {
-    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null }
-    finishHandledRef.current = false
-    falseStartFiredRef.current = false
-    window.electronAPI.stopRace()
-    resetRace()
-    setFinishResult(null)
-    setShowResult(false)
-    setIsChoosingBike(false)
-    setIsFalseStart(false)
-    setFalseStartRiderName('')
-    setDetectedLane(null)
-    raceLaneRef.current = 'left'
-  }
-
-  useEffect(() => () => { if (countdownRef.current) clearTimeout(countdownRef.current) }, [])
-
-  const isIdle = raceStatus === null || raceStatus === 'idle'
-  const isActive = raceStatus !== null && raceStatus !== 'idle'
-  const isLive = raceStatus === 'countdown' || raceStatus === 'racing'
-  const twoLeaderboards = anyGender && availablePools.length > 1
-
+  const pools = anyGender && availablePools.length > 1 ? availablePools : [null as LbPool | null]
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex justify-between items-center px-8 py-4 border-b border-stone-800">
         <div className="flex items-center gap-6">
-          {isIdle && !showResult && (
-            <button
-              onClick={() => {
-                if (window.confirm('Exit qualifying? The current rider list will be lost.')) {
-                  setPhase('setup')
-                }
-              }}
-              className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
-            >
-              ← Exit
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (window.confirm('Exit qualifying? The current rider list will be lost.')) {
+                setPhase('setup')
+              }
+            }}
+            className="text-stone-500 hover:text-white text-sm uppercase tracking-widest transition-colors"
+          >
+            ← Exit
+          </button>
           <div>
             <div className="text-xs text-stone-500 uppercase tracking-widest">Qualifying · {config.distanceMetres}m</div>
-            <div className="text-white text-xl font-bold">{currentRider?.name ?? 'All done'}</div>
+            <div className="text-white text-xl font-bold">
+              {riderA ? (riderB ? `${riderA.name} + ${riderB.name}` : riderA.name) : 'All done'}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {DEMO_DEVICE_IDS.map((id, i) => (
+            <button
+              key={id}
+              onClick={() => toggleDemoDevice(id)}
+              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                demoStopped[id]
+                  ? 'text-orange-400 border-orange-700 bg-orange-950/40'
+                  : 'text-stone-600 border-stone-700'
+              }`}
+            >
+              T{i + 1} {demoStopped[id] ? 'STOP' : 'LIVE'}
+            </button>
+          ))}
           <button
-                onClick={() => setFalseStartEnabled((v) => !v)}
-                className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-                  falseStartEnabled
-                    ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
-                    : 'text-stone-600 border-stone-700'
-                }`}
-                title="Toggle false-start detection (dev only)"
-              >
-                False Start {falseStartEnabled ? 'ON' : 'OFF'}
-              </button>
-              {DEMO_DEVICE_IDS.map((id, i) => (
-                <button
-                  key={id}
-                  onClick={() => toggleDemoDevice(id)}
-                  className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-                    demoStopped[id]
-                      ? 'text-orange-400 border-orange-700 bg-orange-950/40'
-                      : 'text-stone-600 border-stone-700'
-                  }`}
-                  title={`Freeze demo trainer ${i + 1} at 0W (dev only)`}
-                >
-                  T{i + 1} {demoStopped[id] ? 'STOP' : 'LIVE'}
-                </button>
-              ))}
-              <button
-                disabled={!currentRider || isActive || showResult}
-                onClick={() => {
-                  if (!currentRider) return
-                  addQualifyingResult({
-                    raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
-                    left: { riderId: currentRider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
-                    right: null
-                  })
-                }}
-                className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
-              >
-                ⚡ Sim
-              </button>
-              <button
-                disabled={remaining.length === 0 || isActive}
-                onClick={() => {
-                  remaining.forEach((rider) => {
-                    addQualifyingResult({
-                      raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
-                      left: { riderId: rider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
-                      right: null
-                    })
-                  })
-                  setPhase('qualifying-results')
-                }}
-                className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
-              >
-                ⚡ Sim All
-              </button>
-              <button
-                onClick={() => {
-                  const seeds: { name: string; gender: 'M' | 'F' }[] = [
-                    { name: 'Alice', gender: 'F' }, { name: 'Bob', gender: 'M' },
-                    { name: 'Carol', gender: 'F' }, { name: 'Dave', gender: 'M' },
-                    { name: 'Eve', gender: 'F' }, { name: 'Frank', gender: 'M' },
-                    { name: 'Grace', gender: 'F' }, { name: 'Hank', gender: 'M' },
-                    { name: 'Ivy', gender: 'F' }, { name: 'Jack', gender: 'M' },
-                    { name: 'Karen', gender: 'F' }, { name: 'Leo', gender: 'M' },
-                    { name: 'Mia', gender: 'F' }, { name: 'Ned', gender: 'M' },
-                    { name: 'Olivia', gender: 'F' }, { name: 'Pete', gender: 'M' },
-                    { name: 'Quinn', gender: 'F' }, { name: 'Rose', gender: 'F' },
-                    { name: 'Sam', gender: 'M' }, { name: 'Tara', gender: 'F' },
-                  ]
-                  seeds.forEach(({ name, gender }) => addRider({ id: nanoid(), name, gender }))
-                }}
-                className="text-xs border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white rounded px-2 py-1 uppercase tracking-widest transition-colors"
-              >
-                Seed 20
-              </button>
-          <button
-            onClick={() => setBuzzerEnabled((v) => !v)}
-            className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-              buzzerEnabled ? 'text-amber-400 border-amber-700' : 'text-stone-600 border-stone-700'
-            }`}
-            title="Toggle false-start buzzer"
+            disabled={!riderA}
+            onClick={() => {
+              const a = riderA
+              const b = riderB
+              if (!a) return
+              addQualifyingResult({
+                raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                left: { riderId: a.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                right: null
+              })
+              if (b) {
+                addQualifyingResult({
+                  raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                  left: null,
+                  right: { riderId: b.id, lane: 'right', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres }
+                })
+              }
+            }}
+            className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
           >
-            Buzzer {buzzerEnabled ? 'ON' : 'OFF'}
+            ⚡ Sim
           </button>
-          {isIdle && !showResult && (
-            <button
-              onClick={() => setFreePairOpen(true)}
-              className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-3 py-1 uppercase tracking-widest transition-colors"
-            >
-              Free Pair
-            </button>
-          )}
-          {isLive ? (
-            <button
-              onClick={handleAbort}
-              className="text-sm text-red-500 hover:text-red-300 border border-red-900 hover:border-red-600 rounded px-3 py-1 uppercase tracking-widest transition-colors"
-            >
-              Abort Race
-            </button>
-          ) : (
-            <div className="text-stone-500 text-sm">
-              {existingResults.length} / {riders.length} complete
-            </div>
-          )}
+          <button
+            disabled={remaining.length === 0}
+            onClick={() => {
+              remaining.forEach((rider) => {
+                addQualifyingResult({
+                  raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                  left: { riderId: rider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                  right: null
+                })
+              })
+              setPhase('qualifying-results')
+            }}
+            className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+          >
+            ⚡ Sim All
+          </button>
+          <button
+            onClick={() => {
+              const seeds: { name: string; gender: 'M' | 'F' }[] = [
+                { name: 'Alice', gender: 'F' }, { name: 'Bob', gender: 'M' },
+                { name: 'Carol', gender: 'F' }, { name: 'Dave', gender: 'M' },
+                { name: 'Eve', gender: 'F' }, { name: 'Frank', gender: 'M' },
+                { name: 'Grace', gender: 'F' }, { name: 'Hank', gender: 'M' },
+                { name: 'Ivy', gender: 'F' }, { name: 'Jack', gender: 'M' },
+                { name: 'Karen', gender: 'F' }, { name: 'Leo', gender: 'M' },
+                { name: 'Mia', gender: 'F' }, { name: 'Ned', gender: 'M' },
+                { name: 'Olivia', gender: 'F' }, { name: 'Pete', gender: 'M' },
+                { name: 'Quinn', gender: 'F' }, { name: 'Rose', gender: 'F' },
+                { name: 'Sam', gender: 'M' }, { name: 'Tara', gender: 'F' },
+              ]
+              seeds.forEach(({ name, gender }) => addRider({ id: nanoid(), name, gender }))
+            }}
+            className="text-xs border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white rounded px-2 py-1 uppercase tracking-widest transition-colors"
+          >
+            Seed 20
+          </button>
+          <button
+            onClick={() => setFreePairOpen(true)}
+            className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-3 py-1 uppercase tracking-widest transition-colors"
+          >
+            Free Pair
+          </button>
+          <div className="text-stone-500 text-sm">
+            {existingResults.length} / {riders.length} complete
+          </div>
         </div>
       </div>
 
@@ -452,33 +259,39 @@ export function Qualifying() {
       <div className="flex flex-1 overflow-hidden">
         {/* Queue sidebar */}
         <div className="w-52 border-r border-stone-800 flex flex-col overflow-hidden">
-          {twoLeaderboards && isIdle && !showResult && currentRider && (
-            <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-3">
+          {/* Up next + start */}
+          {riderA && (
+            <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-2">
               <div className="text-stone-500 text-xs uppercase tracking-widest">Up now</div>
-              <div className="text-white text-lg font-black leading-tight truncate">{currentRider.name}</div>
-              {currentRider.gender && (
-                <div className={`text-xs font-bold uppercase tracking-widest ${currentRider.gender === 'M' ? 'text-blue-400' : 'text-pink-400'}`}>
-                  {currentRider.gender === 'M' ? 'Men' : 'Women'}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[var(--lane-left)] text-xs font-bold uppercase tracking-widest w-3">L</span>
+                  <span className="text-white text-sm font-bold truncate">{riderA.name}</span>
                 </div>
-              )}
-              {detectedLane && bothConnected && (
-                <div className={`text-xs font-bold uppercase tracking-widest ${detectedLane === 'left' ? 'text-[var(--lane-left)]' : 'text-[var(--lane-right)]'}`}>
-                  {detectedLane === 'left' ? 'Left' : 'Right'} bike
+                {riderB && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--lane-right)] text-xs font-bold uppercase tracking-widest w-3">R</span>
+                    <span className="text-white text-sm font-bold truncate">{riderB.name}</span>
+                  </div>
+                )}
+              </div>
+              {!canStart && (
+                <div className="text-amber-400 text-xs uppercase tracking-widest">
+                  {isSolo ? 'No devices' : 'Need both devices'}
                 </div>
-              )}
-              {!leftReady && !rightReady && (
-                <div className="text-amber-400 text-xs uppercase tracking-widest">No devices</div>
               )}
               <button
                 onClick={startRace}
-                disabled={!leftReady && !rightReady}
+                disabled={!canStart}
                 className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-sm font-bold tracking-widest uppercase rounded transition-colors"
               >
                 START
               </button>
             </div>
           )}
-          {twoLeaderboards && isIdle && !showResult && !currentRider && existingResults.length > 0 && (
+
+          {/* All done */}
+          {!riderA && existingResults.length > 0 && (
             <div className="px-3 pt-4 pb-3 border-b border-stone-800 flex flex-col gap-3">
               <div className="text-green-400 text-sm font-bold uppercase tracking-widest">All done!</div>
               <button
@@ -489,8 +302,8 @@ export function Qualifying() {
               </button>
             </div>
           )}
+
           <div className="px-4 pt-4 pb-2 text-xs text-stone-500 uppercase tracking-widest">Up Next</div>
-          {/* Delete zone lives outside the scroll container so its appearance doesn't shift rider rows */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOverDelete(true); setDragOverId(null) }}
             onDragLeave={() => setDragOverDelete(false)}
@@ -511,28 +324,29 @@ export function Qualifying() {
             ) : (
               <div className="flex flex-col gap-1">
                 {remaining.map((rider, i) => {
-                  const isCurrent = i === 0
+                  const isUpNow = i === 0 || i === 1
                   const isDragging = draggedId === rider.id
                   const isOver = dragOverId === rider.id && draggedId !== rider.id
+                  const laneColor = i === 0 ? 'var(--lane-left)' : i === 1 ? 'var(--lane-right)' : undefined
                   return (
                     <div
                       key={rider.id}
-                      draggable={isIdle && !showResult}
+                      draggable
                       onDragStart={(e) => { e.dataTransfer.setData('text/plain', rider.id); e.dataTransfer.effectAllowed = 'move'; setDraggedId(rider.id); setDragOverDelete(false) }}
                       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(rider.id); setDragOverDelete(false) }}
                       onDragLeave={() => setDragOverId(null)}
                       onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId && fromId !== rider.id) handleQueueDrop(fromId, rider.id); setDraggedId(null); setDragOverId(null) }}
                       onDragEnd={() => { setDraggedId(null); setDragOverId(null); setDragOverDelete(false) }}
-                      className={`flex items-center gap-2 rounded px-3 py-2 border transition-colors ${
+                      className={`flex items-center gap-2 rounded px-3 py-2 border transition-colors cursor-grab active:cursor-grabbing ${
                         isDragging ? 'opacity-40' :
                         isOver ? 'border-[var(--accent)] bg-stone-800' :
-                        isCurrent ? 'accent-tint' : 'bg-stone-900 border-transparent'
-                      } ${isIdle && !showResult ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        isUpNow ? 'accent-tint border-transparent' : 'bg-stone-900 border-transparent'
+                      }`}
                     >
-                      <span className={`text-xs font-bold w-4 shrink-0 ${isCurrent ? 'text-[var(--accent)]' : 'text-stone-600'}`}>
+                      <span className="text-xs font-bold w-4 shrink-0" style={{ color: laneColor ?? '#57534e' }}>
                         {i + 1}
                       </span>
-                      <span className={`flex-1 text-sm font-medium truncate ${isCurrent ? 'text-white' : 'text-stone-400'}`}>
+                      <span className={`flex-1 text-sm font-medium truncate ${isUpNow ? 'text-white' : 'text-stone-400'}`}>
                         {rider.name}
                       </span>
                       {rider.gender && (
@@ -540,9 +354,9 @@ export function Qualifying() {
                           {rider.gender}
                         </span>
                       )}
-                      {isCurrent && (
-                        <span className="text-xs text-[var(--accent)] uppercase tracking-widest shrink-0">
-                          {isActive ? '▶' : '●'}
+                      {isUpNow && (
+                        <span className="text-xs uppercase tracking-widest shrink-0" style={{ color: laneColor }}>
+                          {i === 0 ? 'L' : 'R'}
                         </span>
                       )}
                     </div>
@@ -553,143 +367,13 @@ export function Qualifying() {
           </div>
         </div>
 
-        {/* Race area */}
-        <div className="flex-1 relative">
-          {!twoLeaderboards && isIdle && !showResult && currentRider && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-stone-400 text-2xl">Ready to race?</div>
-                <div className="text-5xl font-black text-white">{currentRider.name}</div>
-                {currentRider.gender && (
-                  <div className={`text-sm font-bold uppercase tracking-widest ${currentRider.gender === 'M' ? 'text-blue-400' : 'text-pink-400'}`}>
-                    {currentRider.gender === 'M' ? 'Men' : 'Women'}
-                  </div>
-                )}
-                {detectedLane && bothConnected && (
-                  <div className={`text-sm font-bold uppercase tracking-widest ${detectedLane === 'left' ? 'text-[var(--lane-left)]' : 'text-[var(--lane-right)]'}`}>
-                    {detectedLane === 'left' ? 'Left' : 'Right'} bike
-                  </div>
-                )}
-                {!leftReady && !rightReady && (
-                  <div className="text-amber-400 text-sm uppercase tracking-widest">No devices connected</div>
-                )}
-                <button
-                  onClick={startRace}
-                  disabled={!leftReady && !rightReady}
-                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
-                >
-                  START RACE
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!twoLeaderboards && isIdle && !showResult && !currentRider && existingResults.length > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="text-green-400 text-2xl font-bold uppercase tracking-widest">All riders done!</div>
-                <button
-                  onClick={() => setPhase('qualifying-results')}
-                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
-                >
-                  See Results →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isActive && !isFalseStart && !showResult && (
-            <div className="absolute inset-0 flex overflow-hidden">
-              <TrackDisplay
-                left={raceLaneRef.current === 'left' && currentRider ? { riderName: currentRider.name } : null}
-                right={raceLaneRef.current === 'right' && currentRider ? { riderName: currentRider.name } : null}
-                targetDistance={config.distanceMetres}
-                compact={twoLeaderboards}
-              />
-            </div>
-          )}
-
-          {isChoosingBike && (
-            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/70">
-              <div className="flex flex-col items-center gap-8">
-                <div className="text-white text-4xl font-black uppercase tracking-widest">Which bike?</div>
-                <div className="flex gap-6">
-                  {(['left', 'right'] as const).map((lane) => {
-                    const label = deviceLabels[lane] || connectedDevices[lane]?.device.name || (lane === 'left' ? 'Left' : 'Right')
-                    const color = lane === 'left' ? 'var(--lane-left)' : 'var(--lane-right)'
-                    return (
-                      <button
-                        key={lane}
-                        onClick={() => handleBikeChosen(lane)}
-                        className="flex flex-col items-center gap-3 px-10 py-8 rounded-xl border-2 transition-colors hover:bg-white/5"
-                        style={{ borderColor: color }}
-                      >
-                        <span className="text-xl font-black uppercase tracking-widest" style={{ color }}>
-                          {lane === 'left' ? 'Left' : 'Right'}
-                        </span>
-                        <span className="text-stone-300 text-sm font-medium">{label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                <button
-                  onClick={() => setIsChoosingBike(false)}
-                  className="text-sm text-stone-600 hover:text-stone-400 uppercase tracking-widest transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isActive && !isFalseStart && raceStatus === 'countdown' && (
-            <Countdown value={countdownValue} />
-          )}
-
-          {isActive && isFalseStart && (
-            <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/80">
-              <div className="flex flex-col items-center gap-4">
-                <div className="text-red-400 text-7xl font-black uppercase tracking-widest">False Start</div>
-                <div className="text-white text-3xl font-bold">{falseStartRiderName}</div>
-              </div>
-            </div>
-          )}
-
-          {showResult && finishResult && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
-              <div className="flex flex-col items-center gap-6">
-                <div className="text-green-400 text-4xl font-bold uppercase tracking-widest">Finished!</div>
-                <div className="text-8xl font-black text-white tabular-nums">
-                  {formatTime(finishResult.finishTimeMs)}
-                </div>
-                <div className="flex gap-8 text-xl text-stone-400">
-                  <span>Avg: <strong className="text-[var(--accent)]">{finishResult.avgWatts}W</strong></span>
-                  <span>Max: <strong className="text-amber-300">{finishResult.maxWatts}W</strong></span>
-                </div>
-                <button
-                  onClick={saveAndAdvance}
-                  className="px-12 py-4 bg-[var(--accent)] hover:bg-[var(--accent-h)] text-[var(--accent-fg)] text-2xl font-bold tracking-widest uppercase rounded-lg transition-colors"
-                >
-                  {remaining.length <= 1 ? 'See Results →' : 'Next Rider →'}
-                </button>
-                <button
-                  onClick={handleRetry}
-                  className="text-stone-500 hover:text-stone-300 text-sm uppercase tracking-widest transition-colors"
-                >
-                  ↺ Retry (go to end of queue)
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Leaderboard sidebar(s) */}
-        {(anyGender && availablePools.length > 1 ? availablePools : [null as LbPool | null]).map((pool) => {
+        {/* Leaderboard(s) */}
+        {pools.map((pool) => {
           const colResults = resultsForPool(pool)
           const labelText = pool === 'M' ? 'Men' : pool === 'F' ? 'Women' : pool === 'Open' ? 'Open' : 'Leaderboard'
           const labelClass = pool === 'M' ? 'text-blue-400' : pool === 'F' ? 'text-pink-400' : pool === 'Open' ? 'text-stone-400' : 'text-stone-500'
           return (
-            <div key={pool ?? 'all'} className="w-80 border-l border-stone-800 flex flex-col overflow-hidden">
+            <div key={pool ?? 'all'} className="flex-1 border-l border-stone-800 flex flex-col overflow-hidden">
               <div className="px-4 pt-4 pb-2 flex items-center justify-between">
                 <span className={`text-sm font-bold uppercase tracking-widest ${labelClass}`}>{labelText}</span>
                 {!pool && <span className="text-xs text-stone-600">{existingResults.length}/{riders.length}</span>}
@@ -722,8 +406,7 @@ export function Qualifying() {
                           ) : (
                             <button
                               onClick={() => { removeQualifyingResult(riderId); moveRiderToEnd(riderId) }}
-                              disabled={!isIdle || showResult}
-                              className="text-xs text-stone-400 hover:text-white border border-stone-700 hover:border-stone-500 rounded px-2 py-0.5 disabled:opacity-30 transition-colors shrink-0"
+                              className="text-xs text-stone-400 hover:text-white border border-stone-700 hover:border-stone-500 rounded px-2 py-0.5 transition-colors shrink-0"
                               title={formatTime(laneResult?.finishTimeMs ?? 0)}
                             >
                               ↺
@@ -744,50 +427,47 @@ export function Qualifying() {
         })}
       </div>
 
-
       {freePairOpen && (
         <FreePairModal onClose={() => setFreePairOpen(false)} onStart={handleFreePairStart} />
       )}
 
-      {/* Late arrival panel */}
-      {isIdle && !showResult && (
-        <div className="border-t border-stone-800 px-8 py-4">
-          <div className="flex items-center gap-3 w-full max-w-md mx-auto">
-            <span className="text-xs text-stone-500 uppercase tracking-widest whitespace-nowrap">Add rider</span>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={addName}
-                maxLength={24}
-                onChange={(e) => { setAddName(e.target.value); setAddError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddRider()}
-                placeholder="Late arrival name…"
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full bg-stone-900 border border-stone-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent)] placeholder:text-stone-600"
-              />
-              {addError && <p className="absolute text-red-400 text-xs mt-0.5">{addError}</p>}
-            </div>
-            <div className="flex rounded border border-stone-700 overflow-hidden shrink-0">
-                <button
-                  onClick={() => setAddGender('M')}
-                  className={`px-2 py-2 text-xs font-bold transition-colors ${addGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500'}`}
-                >M</button>
-                <button
-                  onClick={() => setAddGender('F')}
-                  className={`px-2 py-2 text-xs font-bold border-l border-stone-700 transition-colors ${addGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500'}`}
-                >F</button>
-              </div>
-            <button
-              onClick={handleAddRider}
-              disabled={!addName.trim()}
-              className="px-4 py-2 rounded bg-stone-700 hover:bg-stone-600 disabled:bg-stone-800 disabled:text-stone-600 text-white text-sm font-bold transition-colors"
-            >
-              Add
-            </button>
+      {/* Late arrival */}
+      <div className="border-t border-stone-800 px-8 py-4">
+        <div className="flex items-center gap-3 w-full max-w-md mx-auto">
+          <span className="text-xs text-stone-500 uppercase tracking-widest whitespace-nowrap">Add rider</span>
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={addName}
+              maxLength={24}
+              onChange={(e) => { setAddName(e.target.value); setAddError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRider()}
+              placeholder="Late arrival name…"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full bg-stone-900 border border-stone-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent)] placeholder:text-stone-600"
+            />
+            {addError && <p className="absolute text-red-400 text-xs mt-0.5">{addError}</p>}
           </div>
+          <div className="flex rounded border border-stone-700 overflow-hidden shrink-0">
+            <button
+              onClick={() => setAddGender('M')}
+              className={`px-2 py-2 text-xs font-bold transition-colors ${addGender === 'M' ? 'bg-blue-900 text-blue-300' : 'text-stone-500'}`}
+            >M</button>
+            <button
+              onClick={() => setAddGender('F')}
+              className={`px-2 py-2 text-xs font-bold border-l border-stone-700 transition-colors ${addGender === 'F' ? 'bg-pink-900 text-pink-300' : 'text-stone-500'}`}
+            >F</button>
+          </div>
+          <button
+            onClick={handleAddRider}
+            disabled={!addName.trim()}
+            className="px-4 py-2 rounded bg-stone-700 hover:bg-stone-600 disabled:bg-stone-800 disabled:text-stone-600 text-white text-sm font-bold transition-colors"
+          >
+            Add
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

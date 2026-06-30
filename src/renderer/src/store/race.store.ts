@@ -15,6 +15,13 @@ interface RaceState {
     leftGender?: 'M' | 'F'
     rightGender?: 'M' | 'F'
   } | null
+  qualRiders: {
+    leftRiderId: string
+    leftName: string
+    rightRiderId: string | null
+    rightName: string | null
+    distance: number
+  } | null
 
   initRace: (raceId: string, left: { riderId: string; riderName: string } | null, right: { riderId: string; riderName: string } | null) => void
   setCountdown: (value: number | null) => void
@@ -32,6 +39,13 @@ interface RaceState {
     countAsQualifying?: boolean
     leftGender?: 'M' | 'F'
     rightGender?: 'M' | 'F'
+  }) => void
+  setQualRiders: (riders: {
+    leftRiderId: string
+    leftName: string
+    rightRiderId: string | null
+    rightName: string | null
+    distance: number
   }) => void
   resetRace: () => void
 }
@@ -53,6 +67,7 @@ function makeLane(rider: { riderId: string; riderName: string }): LiveLaneState 
 export const useRaceStore = create<RaceState>((set) => ({
   race: null,
   freePairRiders: null,
+  qualRiders: null,
 
   initRace: (raceId, left, right) =>
     set({
@@ -130,5 +145,7 @@ export const useRaceStore = create<RaceState>((set) => ({
 
   setFreePairRiders: (riders) => set({ freePairRiders: riders }),
 
-  resetRace: () => set({ race: null, freePairRiders: null })
+  setQualRiders: (riders) => set({ qualRiders: riders }),
+
+  resetRace: () => set({ race: null, freePairRiders: null, qualRiders: null })
 }))
