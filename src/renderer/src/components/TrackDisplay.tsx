@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useRaceStore } from '../store/race.store'
+import { applyHeroFire, type HeroLaneThresholds } from '../lib/hero'
 
 const SIZE = 600
 const CX = SIZE / 2
@@ -19,6 +20,7 @@ interface Props {
   targetDistance: number
   compact?: boolean
   garrettWeights?: { left: number; right: number } | null
+  heroThresholds?: HeroLaneThresholds | null
 }
 
 function arcOffset(r: number, pct: number): number {
@@ -36,7 +38,7 @@ function fmt(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${String(cs).padStart(2, '0')}`
 }
 
-export function TrackDisplay({ left, right, targetDistance, compact = false, garrettWeights = null }: Props) {
+export function TrackDisplay({ left, right, targetDistance, compact = false, garrettWeights = null, heroThresholds = null }: Props) {
   const hasBoth = left !== null && right !== null
   const leftR = hasBoth ? INNER_R : SOLO_R
 
@@ -49,6 +51,8 @@ export function TrackDisplay({ left, right, targetDistance, compact = false, gar
   targetDistanceRef.current = targetDistance
   const garrettWeightsRef = useRef(garrettWeights)
   garrettWeightsRef.current = garrettWeights
+  const heroThresholdsRef = useRef(heroThresholds)
+  heroThresholdsRef.current = heroThresholds
 
   // SVG refs
   const leftArcRef = useRef<SVGCircleElement>(null)
@@ -124,6 +128,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false, gar
         if (leftWattsRef.current)    leftWattsRef.current.textContent    = gw
           ? (l.instantWatts / gw.left).toFixed(1)
           : String(l.instantWatts)
+        applyHeroFire(leftWattsRef.current, l.instantWatts, heroThresholdsRef.current?.left ?? null, heroThresholdsRef.current?.recordWatts ?? 0)
         if (leftCadenceRef.current)  leftCadenceRef.current.textContent  = String(l.cadenceRpm)
         if (leftTimeRef.current)     leftTimeRef.current.textContent     = fmt(l.elapsedMs)
         if (leftFinishedRef.current) leftFinishedRef.current.style.visibility = l.finished ? 'visible' : 'hidden'
@@ -133,6 +138,7 @@ export function TrackDisplay({ left, right, targetDistance, compact = false, gar
         if (rightWattsRef.current)    rightWattsRef.current.textContent    = gw
           ? (r.instantWatts / gw.right).toFixed(1)
           : String(r.instantWatts)
+        applyHeroFire(rightWattsRef.current, r.instantWatts, heroThresholdsRef.current?.right ?? null, heroThresholdsRef.current?.recordWatts ?? 0)
         if (rightCadenceRef.current)  rightCadenceRef.current.textContent  = String(r.cadenceRpm)
         if (rightTimeRef.current)     rightTimeRef.current.textContent     = fmt(r.elapsedMs)
         if (rightFinishedRef.current) rightFinishedRef.current.style.visibility = r.finished ? 'visible' : 'hidden'
@@ -238,6 +244,14 @@ export function TrackDisplay({ left, right, targetDistance, compact = false, gar
       cancelAnimationFrame(rafRef.current)
     }
   }, [])
+
+  // Re-apply immediately when the toggle changes — the subscription above only
+  // fires on telemetry, which stops once a lane finishes.
+  useEffect(() => {
+    const race = useRaceStore.getState().race
+    applyHeroFire(leftWattsRef.current, race?.left?.instantWatts ?? 0, heroThresholds?.left ?? null, heroThresholds?.recordWatts ?? 0)
+    applyHeroFire(rightWattsRef.current, race?.right?.instantWatts ?? 0, heroThresholds?.right ?? null, heroThresholds?.recordWatts ?? 0)
+  }, [heroThresholds])
 
   const svgPx = compact ? 400 : SIZE
 

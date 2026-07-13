@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders, selectGarrettEntries } from '../store/event.store'
+import { useEventStore, selectRiders, selectGarrettEntries, selectEventRecordWatts, selectHeroMode } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
@@ -8,6 +8,7 @@ import { LineSplitDisplay } from '../components/LineSplitDisplay'
 import { Countdown } from '../components/Countdown'
 import { KeggersLeaderboard } from '../components/KeggersLeaderboard'
 import { useAudio } from '../hooks/useAudio'
+import { heroThresholdsFor } from '../lib/hero'
 import type { LaneResult } from '@shared/types'
 
 export function FreePairRace() {
@@ -17,6 +18,7 @@ export function FreePairRace() {
   const addRider = useEventStore((s) => s.addRider)
   const riders = useEventStore(selectRiders)
   const garrettEntries = useEventStore(selectGarrettEntries)
+  const eventRecordWatts = useEventStore(selectEventRecordWatts)
 
   const freePairRiders = useRaceStore((s) => s.freePairRiders)
   const raceStatus = useRaceStore((s) => s.race?.status ?? null)
@@ -37,6 +39,7 @@ export function FreePairRace() {
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
   const [displayFormat, setDisplayFormat] = useState<'line' | 'circle'>('circle')
+  const heroMode = useEventStore(selectHeroMode)
   const [isFalseStart, setIsFalseStart] = useState(false)
   const [falseStartRiderName, setFalseStartRiderName] = useState('')
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
@@ -65,6 +68,13 @@ export function FreePairRace() {
   const rightGender = freePairRiders?.rightGender
   const garrettWeights = garrettMode && leftWeightKg && rightWeightKg
     ? { left: leftWeightKg, right: rightWeightKg }
+    : null
+  const heroThresholds = heroMode
+    ? {
+        left: heroThresholdsFor(leftGender),
+        right: heroThresholdsFor(rightGender),
+        recordWatts: eventRecordWatts,
+      }
     : null
 
   // If riders are missing (e.g. app restarted mid-session), bail back to bracket
@@ -301,12 +311,14 @@ export function FreePairRace() {
                 right={{ riderName: rightName }}
                 targetDistance={distance}
                 garrettWeights={garrettWeights}
+                heroThresholds={heroThresholds}
               />
             ) : (
               <LineSplitDisplay
                 left={{ riderName: leftName }}
                 right={{ riderName: rightName }}
                 targetDistance={distance}
+                heroThresholds={heroThresholds}
               />
             )}
           </div>

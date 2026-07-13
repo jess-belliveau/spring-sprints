@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders, selectQualifyingResults } from '../store/event.store'
+import { useEventStore, selectRiders, selectQualifyingResults, selectEventRecordWatts, selectHeroMode } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { Countdown } from '../components/Countdown'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { LineSplitDisplay } from '../components/LineSplitDisplay'
 import { useAudio } from '../hooks/useAudio'
+import { heroThresholdsFor } from '../lib/hero'
 import type { LaneResult } from '@shared/types'
 
 const WATT_THRESHOLD = 10
@@ -22,6 +23,7 @@ export function QualSplitDisplay() {
   const addQualifyingResult = useEventStore((s) => s.addQualifyingResult)
   const moveRiderToEnd = useEventStore((s) => s.moveRiderToEnd)
   const setPhase = useEventStore((s) => s.setPhase)
+  const eventRecordWatts = useEventStore(selectEventRecordWatts)
 
   const qualRiders = useRaceStore((s) => s.qualRiders)
   const raceStatus = useRaceStore((s) => s.race?.status ?? null)
@@ -35,6 +37,7 @@ export function QualSplitDisplay() {
   const { playCountdownBeep, playFinishFanfare, playBuzzer } = useAudio()
 
   const [displayFormat, setDisplayFormat] = useState<'line' | 'circle'>('line')
+  const heroMode = useEventStore(selectHeroMode)
   const [isFalseStart, setIsFalseStart] = useState(false)
   const [falseStartRiderName, setFalseStartRiderName] = useState('')
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
@@ -197,6 +200,14 @@ export function QualSplitDisplay() {
   const leftRiderName = qualRiders.leftName
   const rightRiderName = qualRiders.rightName
 
+  const heroThresholds = heroMode
+    ? {
+        left: heroThresholdsFor(riders.find((r) => r.id === qualRiders.leftRiderId)?.gender),
+        right: heroThresholdsFor(riders.find((r) => r.id === qualRiders.rightRiderId)?.gender),
+        recordWatts: eventRecordWatts,
+      }
+    : null
+
   const completedIds = new Set(
     existingResults.flatMap((r) => [r.left?.riderId, r.right?.riderId].filter((id): id is string => !!id))
   )
@@ -258,12 +269,14 @@ export function QualSplitDisplay() {
               left={{ riderName: leftRiderName }}
               right={rightRiderName ? { riderName: rightRiderName } : null}
               targetDistance={qualRiders.distance}
+              heroThresholds={heroThresholds}
             />
           ) : (
             <TrackDisplay
               left={{ riderName: leftRiderName }}
               right={rightRiderName ? { riderName: rightRiderName } : null}
               targetDistance={qualRiders.distance}
+              heroThresholds={heroThresholds}
             />
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders, selectConfig, selectQualifyingResults } from '../store/event.store'
+import { useEventStore, selectRiders, selectConfig, selectQualifyingResults, selectHeroMode } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
 import type { FreePairStartData } from '../components/FreePairModal'
@@ -32,6 +32,8 @@ export function Qualifying() {
   const removeRider = useEventStore((s) => s.removeRider)
   const addRider = useEventStore((s) => s.addRider)
   const setPhase = useEventStore((s) => s.setPhase)
+  const heroMode = useEventStore(selectHeroMode)
+  const setHeroMode = useEventStore((s) => s.setHeroMode)
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const setQualRiders = useRaceStore((s) => s.setQualRiders)
 
@@ -248,6 +250,17 @@ export function Qualifying() {
             className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-3 py-1 uppercase tracking-widest transition-colors"
           >
             Free Pair
+          </button>
+          <button
+            onClick={() => setHeroMode(!heroMode)}
+            className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+              heroMode
+                ? 'text-orange-400 border-orange-700 bg-orange-950/40'
+                : 'text-stone-600 border-stone-700 hover:text-stone-400 hover:border-stone-500'
+            }`}
+            title="Hero mode — watts catch fire above big-power thresholds during races (persists for the event)"
+          >
+            🔥 Hero {heroMode ? 'ON' : 'OFF'}
           </button>
           <div className="text-stone-500 text-sm">
             {existingResults.length} / {riders.length} complete

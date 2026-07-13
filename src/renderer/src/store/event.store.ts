@@ -33,6 +33,7 @@ interface EventState {
   generateCustomBracket: (names: string[]) => void
   advanceBracket: (matchId: string, winnerId: string, raceResultId: string, pool: BracketPool) => void
   setCurrentRaceId: (id: string | null) => void
+  setHeroMode: (enabled: boolean) => void
   reset: () => void
 }
 
@@ -272,6 +273,14 @@ export const useEventStore = create<EventState>((set, _get) => ({
       return { event }
     }),
 
+  setHeroMode: (enabled) =>
+    set((s) => {
+      if (!s.event) return s
+      const event = { ...s.event, heroMode: enabled }
+      window.electronAPI.saveEvent(event)
+      return { event }
+    }),
+
   reorderRiders: (riders) =>
     set((s) => {
       if (!s.event) return s
@@ -439,6 +448,20 @@ export const selectBracketResults = (s: EventState): RaceResult[] => s.event?.br
 export const selectConfig = (s: EventState): EventConfig => s.event?.config ?? EMPTY_CONFIG
 export const selectHasGenderSplit = (s: EventState): boolean =>
   s.event?.riders.some((r) => r.gender !== undefined) ?? false
+export const selectHeroMode = (s: EventState): boolean => s.event?.heroMode ?? false
 
 const EMPTY_GARRETT: GarrettEntry[] = []
 export const selectGarrettEntries = (s: EventState): GarrettEntry[] => s.event?.garrettEntries ?? EMPTY_GARRETT
+
+// Highest max watts recorded anywhere in the event so far (0 = nothing recorded yet)
+export const selectEventRecordWatts = (s: EventState): number => {
+  const e = s.event
+  if (!e) return 0
+  let record = 0
+  for (const result of [...e.qualifyingResults, ...e.bracketResults]) {
+    if (result.left) record = Math.max(record, result.left.maxWatts)
+    if (result.right) record = Math.max(record, result.right.maxWatts)
+  }
+  for (const entry of e.garrettEntries) record = Math.max(record, entry.maxWatts)
+  return record
+}

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectRiders, selectBracket, selectBracketF, selectBracketOpen, selectConfig, selectHasGenderSplit } from '../store/event.store'
+import { useEventStore, selectRiders, selectBracket, selectBracketF, selectBracketOpen, selectConfig, selectHasGenderSplit, selectEventRecordWatts, selectHeroMode } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { useBluetoothStore } from '../store/bluetooth.store'
 import { TrackDisplay } from '../components/TrackDisplay'
 import { LineSplitDisplay } from '../components/LineSplitDisplay'
 import { Countdown } from '../components/Countdown'
 import { useAudio } from '../hooks/useAudio'
+import { heroThresholdsFor } from '../lib/hero'
 import type { LaneResult, BracketPool } from '@shared/types'
 
 export function HeadToHead() {
@@ -17,6 +18,7 @@ export function HeadToHead() {
   const hasGenderSplit = useEventStore(selectHasGenderSplit)
   const config = useEventStore(selectConfig)
   const currentRaceId = useEventStore((s) => s.event?.currentRaceId)
+  const eventRecordWatts = useEventStore(selectEventRecordWatts)
   const advanceBracket = useEventStore((s) => s.advanceBracket)
   const addBracketResult = useEventStore((s) => s.addBracketResult)
   const setPhase = useEventStore((s) => s.setPhase)
@@ -40,6 +42,7 @@ export function HeadToHead() {
   const resultsRef = useRef<Partial<Record<'left' | 'right', LaneResult>>>({})
   const fanfarePlayed = useRef(false)
   const [displayFormat, setDisplayFormat] = useState<'line' | 'circle'>('circle')
+  const heroMode = useEventStore(selectHeroMode)
   const [isFalseStart, setIsFalseStart] = useState(false)
   const [falseStartRiderName, setFalseStartRiderName] = useState('')
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
@@ -205,6 +208,14 @@ export function HeadToHead() {
   const winnerName = winnerIsLeft ? leftRider.name : rightRider.name
   const winnerColor = winnerIsLeft ? 'var(--lane-left)' : 'var(--lane-right)'
 
+  const heroThresholds = heroMode
+    ? {
+        left: heroThresholdsFor(leftRider.gender),
+        right: heroThresholdsFor(rightRider.gender),
+        recordWatts: eventRecordWatts,
+      }
+    : null
+
   const poolLabel = hasGenderSplit
     ? (matchPool === 'M' ? ' · Men' : matchPool === 'F' ? ' · Women' : ' · Open')
     : ''
@@ -286,12 +297,14 @@ export function HeadToHead() {
                 left={leftRider ? { riderName: leftRider.name } : null}
                 right={rightRider ? { riderName: rightRider.name } : null}
                 targetDistance={config.distanceMetres}
+                heroThresholds={heroThresholds}
               />
             ) : (
               <LineSplitDisplay
                 left={leftRider ? { riderName: leftRider.name } : null}
                 right={rightRider ? { riderName: rightRider.name } : null}
                 targetDistance={config.distanceMetres}
+                heroThresholds={heroThresholds}
               />
             )}
           </div>

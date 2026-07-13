@@ -12,3 +12,8 @@ export const COUNTDOWN_SECONDS = 3
 
 // Number of riders that advance from qualifying to the knockout bracket
 export const BRACKET_SIZE = 8
+
+// Hero mode: live watt readouts catch fire above these thresholds.
+// Two escalating tiers per gender: [tier1, tier2] watts. Tune to taste.
+export const HERO_THRESHOLDS_M: readonly [number, number] = [750, 1000]
+export const HERO_THRESHOLDS_F: readonly [number, number] = [500, 750]

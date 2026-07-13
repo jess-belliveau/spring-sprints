@@ -126,6 +126,9 @@ export interface EventData {
   garrettEntries: GarrettEntry[]
   currentRaceId: string | null
   phase: EventPhase
+  // Hero mode watt effects for all races in this event; optional so events
+  // saved before the feature existed still load (treated as off)
+  heroMode?: boolean
 }
 
 // ── Live race state ───────────────────────────────────────────────────────────

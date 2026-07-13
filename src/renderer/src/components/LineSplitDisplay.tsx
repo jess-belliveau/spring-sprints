@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { useRaceStore } from '../store/race.store'
+import { applyHeroFire, type HeroLaneThresholds } from '../lib/hero'
 
 const MAX_EXTRAP_S = 2.0
 
@@ -7,6 +8,7 @@ interface Props {
   left: { riderName: string } | null
   right: { riderName: string } | null
   targetDistance: number
+  heroThresholds?: HeroLaneThresholds | null
 }
 
 function fmt(ms: number): string {
@@ -25,10 +27,10 @@ function Panel({
 }: {
   riderName: string
   side: 'left' | 'right'
-  barRef: RefObject<HTMLDivElement>
-  wattsRef: RefObject<HTMLSpanElement>
-  timeRef: RefObject<HTMLSpanElement>
-  finishedRef: RefObject<HTMLDivElement>
+  barRef: RefObject<HTMLDivElement | null>
+  wattsRef: RefObject<HTMLSpanElement | null>
+  timeRef: RefObject<HTMLSpanElement | null>
+  finishedRef: RefObject<HTMLDivElement | null>
 }) {
   const color = side === 'left' ? 'var(--lane-left)' : 'var(--lane-right)'
   const isLeft = side === 'left'
@@ -53,9 +55,9 @@ function Panel({
         <span ref={timeRef} className="text-8xl font-black tabular-nums text-white leading-none">
           0:00.00
         </span>
-        <div className="leading-none">
-          <span ref={wattsRef} className="text-4xl font-bold tabular-nums text-amber-400">0</span>
-          <span className="text-xl text-stone-400"> W</span>
+        <div className="leading-none text-4xl font-bold">
+          <span ref={wattsRef} className="tabular-nums text-amber-400">0</span>
+          <span className="text-xl font-normal text-stone-400"> W</span>
         </div>
         <div
           ref={finishedRef}
@@ -70,7 +72,7 @@ function Panel({
   )
 }
 
-export function LineSplitDisplay({ left, right, targetDistance }: Props) {
+export function LineSplitDisplay({ left, right, targetDistance, heroThresholds = null }: Props) {
   const leftBarRef = useRef<HTMLDivElement>(null)
   const leftWattsRef = useRef<HTMLSpanElement>(null)
   const leftTimeRef = useRef<HTMLSpanElement>(null)
@@ -84,6 +86,8 @@ export function LineSplitDisplay({ left, right, targetDistance }: Props) {
   const rightPhysRef = useRef({ pos: 0, vel: 0, ts: 0 })
   const targetDistanceRef = useRef(targetDistance)
   targetDistanceRef.current = targetDistance
+  const heroThresholdsRef = useRef(heroThresholds)
+  heroThresholdsRef.current = heroThresholds
   const rafRef = useRef(0)
 
   useEffect(() => {
@@ -100,6 +104,7 @@ export function LineSplitDisplay({ left, right, targetDistance }: Props) {
           leftPhysRef.current = { pos: newPos, vel: newVel, ts: now }
         }
         if (leftWattsRef.current)    leftWattsRef.current.textContent    = String(l.instantWatts)
+        applyHeroFire(leftWattsRef.current, l.instantWatts, heroThresholdsRef.current?.left ?? null, heroThresholdsRef.current?.recordWatts ?? 0)
         if (leftTimeRef.current)     leftTimeRef.current.textContent     = fmt(l.elapsedMs)
         if (leftFinishedRef.current) leftFinishedRef.current.style.display = l.finished ? '' : 'none'
       }
@@ -112,6 +117,7 @@ export function LineSplitDisplay({ left, right, targetDistance }: Props) {
           rightPhysRef.current = { pos: newPos, vel: newVel, ts: now }
         }
         if (rightWattsRef.current)    rightWattsRef.current.textContent    = String(r.instantWatts)
+        applyHeroFire(rightWattsRef.current, r.instantWatts, heroThresholdsRef.current?.right ?? null, heroThresholdsRef.current?.recordWatts ?? 0)
         if (rightTimeRef.current)     rightTimeRef.current.textContent     = fmt(r.elapsedMs)
         if (rightFinishedRef.current) rightFinishedRef.current.style.display = r.finished ? '' : 'none'
       }
@@ -138,6 +144,14 @@ export function LineSplitDisplay({ left, right, targetDistance }: Props) {
       cancelAnimationFrame(rafRef.current)
     }
   }, [])
+
+  // Re-apply immediately when the toggle changes — the subscription above only
+  // fires on telemetry, which stops once a lane finishes.
+  useEffect(() => {
+    const race = useRaceStore.getState().race
+    applyHeroFire(leftWattsRef.current, race?.left?.instantWatts ?? 0, heroThresholds?.left ?? null, heroThresholds?.recordWatts ?? 0)
+    applyHeroFire(rightWattsRef.current, race?.right?.instantWatts ?? 0, heroThresholds?.right ?? null, heroThresholds?.recordWatts ?? 0)
+  }, [heroThresholds])
 
   return (
     <div className="flex w-full h-full overflow-hidden">

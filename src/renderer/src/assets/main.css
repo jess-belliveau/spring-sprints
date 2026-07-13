@@ -30,6 +30,81 @@
   border-color:     color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
+/* ── Hero mode: watt readouts catch fire above gender-specific thresholds ─── */
+
+.hero-fire-1,
+.hero-fire-2,
+.hero-fire-3 {
+  display: inline-block;
+  animation: hero-flicker 0.35s ease-in-out infinite alternate;
+}
+
+/* Tier 1: orange flame */
+.hero-fire-1 {
+  font-size: 1.2em;
+  color: #ffb454;
+  --fire-core: #fbbf24;
+  --fire-mid:  #f97316;
+  --fire-tip:  #ef4444;
+}
+
+/* Tier 2: white-hot flame */
+.hero-fire-2 {
+  font-size: 1.45em;
+  color: #fefce8;
+  --fire-core: #fde047;
+  --fire-mid:  #fb923c;
+  --fire-tip:  #dc2626;
+}
+
+/* Tier 3: event watt record broken — electric violet lightning */
+.hero-fire-3 {
+  font-size: 1.7em;
+  color: #f5f3ff;
+  --fire-core: #c4b5fd;
+  --fire-mid:  #8b5cf6;
+  --fire-tip:  #22d3ee;
+  animation-duration: 0.18s;
+}
+
+.hero-fire-3::after {
+  content: '⚡';
+  font-size: 0.45em;
+  vertical-align: super;
+  animation: hero-record-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes hero-record-pulse {
+  from { opacity: 0.5; }
+  to   { opacity: 1; }
+}
+
+@keyframes hero-flicker {
+  0% {
+    transform: scale(1);
+    text-shadow:
+      0 0 4px var(--fire-core),
+      0 -4px 12px var(--fire-core),
+      0 -10px 22px var(--fire-mid),
+      0 -18px 34px var(--fire-tip);
+  }
+  40% {
+    text-shadow:
+      0 0 6px var(--fire-core),
+      1px -6px 14px var(--fire-core),
+      -2px -14px 26px var(--fire-mid),
+      1px -22px 40px var(--fire-tip);
+  }
+  100% {
+    transform: scale(1.04);
+    text-shadow:
+      0 0 8px var(--fire-core),
+      -1px -8px 18px var(--fire-core),
+      2px -16px 30px var(--fire-mid),
+      -1px -26px 46px var(--fire-tip);
+  }
+}
+
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 
 * {

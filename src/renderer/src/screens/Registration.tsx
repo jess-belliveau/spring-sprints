@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket, selectBracketF, selectBracketOpen } from '../store/event.store'
+import { useEventStore, selectConfig, selectRiders, selectQualifyingResults, selectBracket, selectBracketF, selectBracketOpen, selectHeroMode } from '../store/event.store'
 import { useRaceStore } from '../store/race.store'
 import { FreePairModal } from '../components/FreePairModal'
 import type { FreePairStartData } from '../components/FreePairModal'
@@ -26,6 +26,8 @@ export function Registration() {
   const generateBracket = useEventStore((s) => s.generateBracket)
   const generateCustomBracket = useEventStore((s) => s.generateCustomBracket)
   const reset = useEventStore((s) => s.reset)
+  const heroMode = useEventStore(selectHeroMode)
+  const setHeroMode = useEventStore((s) => s.setHeroMode)
 
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [input, setInput] = useState('')
@@ -194,6 +196,18 @@ export function Registration() {
           className="w-full py-4 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-h)] disabled:bg-stone-800 disabled:text-stone-600 text-[var(--accent-fg)] text-xl font-bold tracking-widest uppercase transition-colors"
         >
           {continueLabel}
+        </button>
+
+        <button
+          onClick={() => setHeroMode(!heroMode)}
+          className={`w-full py-3 rounded-lg border text-sm font-bold tracking-widest uppercase transition-colors ${
+            heroMode
+              ? 'border-orange-700 text-orange-400 hover:border-orange-500'
+              : 'border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white'
+          }`}
+          title="Hero mode — watts catch fire above big-power thresholds during races"
+        >
+          🔥 Hero Mode {heroMode ? 'ON' : 'OFF'}
         </button>
 
         <button
