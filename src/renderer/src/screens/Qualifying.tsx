@@ -173,7 +173,7 @@ export function Qualifying() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {DEMO_DEVICE_IDS.map((id, i) => (
+          {import.meta.env.DEV && DEMO_DEVICE_IDS.map((id, i) => (
             <button
               key={id}
               onClick={() => toggleDemoDevice(id)}
@@ -186,65 +186,71 @@ export function Qualifying() {
               T{i + 1} {demoStopped[id] ? 'STOP' : 'LIVE'}
             </button>
           ))}
-          <button
-            disabled={!riderA}
-            onClick={() => {
-              const a = riderA
-              const b = riderB
-              if (!a) return
-              addQualifyingResult({
-                raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
-                left: { riderId: a.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
-                right: null
-              })
-              if (b) {
+          {import.meta.env.DEV && (
+            <button
+              disabled={!riderA}
+              onClick={() => {
+                const a = riderA
+                const b = riderB
+                if (!a) return
                 addQualifyingResult({
                   raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
-                  left: null,
-                  right: { riderId: b.id, lane: 'right', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres }
-                })
-              }
-            }}
-            className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
-          >
-            ⚡ Sim
-          </button>
-          <button
-            disabled={remaining.length === 0}
-            onClick={() => {
-              remaining.forEach((rider) => {
-                addQualifyingResult({
-                  raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
-                  left: { riderId: rider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                  left: { riderId: a.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
                   right: null
                 })
-              })
-              setPhase('qualifying-results')
-            }}
-            className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
-          >
-            ⚡ Sim All
-          </button>
-          <button
-            onClick={() => {
-              const seeds: { name: string; gender: 'M' | 'F' }[] = [
-                { name: 'Alice', gender: 'F' }, { name: 'Bob', gender: 'M' },
-                { name: 'Carol', gender: 'F' }, { name: 'Dave', gender: 'M' },
-                { name: 'Eve', gender: 'F' }, { name: 'Frank', gender: 'M' },
-                { name: 'Grace', gender: 'F' }, { name: 'Hank', gender: 'M' },
-                { name: 'Ivy', gender: 'F' }, { name: 'Jack', gender: 'M' },
-                { name: 'Karen', gender: 'F' }, { name: 'Leo', gender: 'M' },
-                { name: 'Mia', gender: 'F' }, { name: 'Ned', gender: 'M' },
-                { name: 'Olivia', gender: 'F' }, { name: 'Pete', gender: 'M' },
-                { name: 'Quinn', gender: 'F' }, { name: 'Rose', gender: 'F' },
-                { name: 'Sam', gender: 'M' }, { name: 'Tara', gender: 'F' },
-              ]
-              seeds.forEach(({ name, gender }) => addRider({ id: nanoid(), name, gender }))
-            }}
-            className="text-xs border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white rounded px-2 py-1 uppercase tracking-widest transition-colors"
-          >
-            Seed 20
-          </button>
+                if (b) {
+                  addQualifyingResult({
+                    raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                    left: null,
+                    right: { riderId: b.id, lane: 'right', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres }
+                  })
+                }
+              }}
+              className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+            >
+              ⚡ Sim
+            </button>
+          )}
+          {import.meta.env.DEV && (
+            <button
+              disabled={remaining.length === 0}
+              onClick={() => {
+                remaining.forEach((rider) => {
+                  addQualifyingResult({
+                    raceId: nanoid(), type: 'qualifying', startedAt: Date.now(),
+                    left: { riderId: rider.id, lane: 'left', finishTimeMs: Math.round(30000 + Math.random() * 30000), maxWatts: Math.round(300 + Math.random() * 300), avgWatts: Math.round(200 + Math.random() * 200), distanceMetres: config.distanceMetres },
+                    right: null
+                  })
+                })
+                setPhase('qualifying-results')
+              }}
+              className="text-xs border border-amber-900 hover:border-amber-700 text-amber-700 hover:text-amber-400 disabled:opacity-30 rounded px-2 py-1 uppercase tracking-widest transition-colors"
+            >
+              ⚡ Sim All
+            </button>
+          )}
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                const seeds: { name: string; gender: 'M' | 'F' }[] = [
+                  { name: 'Alice', gender: 'F' }, { name: 'Bob', gender: 'M' },
+                  { name: 'Carol', gender: 'F' }, { name: 'Dave', gender: 'M' },
+                  { name: 'Eve', gender: 'F' }, { name: 'Frank', gender: 'M' },
+                  { name: 'Grace', gender: 'F' }, { name: 'Hank', gender: 'M' },
+                  { name: 'Ivy', gender: 'F' }, { name: 'Jack', gender: 'M' },
+                  { name: 'Karen', gender: 'F' }, { name: 'Leo', gender: 'M' },
+                  { name: 'Mia', gender: 'F' }, { name: 'Ned', gender: 'M' },
+                  { name: 'Olivia', gender: 'F' }, { name: 'Pete', gender: 'M' },
+                  { name: 'Quinn', gender: 'F' }, { name: 'Rose', gender: 'F' },
+                  { name: 'Sam', gender: 'M' }, { name: 'Tara', gender: 'F' },
+                ]
+                seeds.forEach(({ name, gender }) => addRider({ id: nanoid(), name, gender }))
+              }}
+              className="text-xs border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-white rounded px-2 py-1 uppercase tracking-widest transition-colors"
+            >
+              Seed 20
+            </button>
+          )}
           <button
             onClick={() => setFreePairOpen(true)}
             className="text-xs border border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 rounded px-3 py-1 uppercase tracking-widest transition-colors"

@@ -43,7 +43,7 @@ export function QualSplitDisplay() {
   const [buzzerEnabled, setBuzzerEnabled] = useState(true)
   const buzzerEnabledRef = useRef(true)
   buzzerEnabledRef.current = buzzerEnabled
-  const [falseStartEnabled, setFalseStartEnabled] = useState(true)
+  const [falseStartEnabled, setFalseStartEnabled] = useState(!import.meta.env.DEV)
   const falseStartEnabledRef = useRef(falseStartEnabled)
   falseStartEnabledRef.current = falseStartEnabled
   const falseStartFiredRef = useRef(false)
@@ -233,16 +233,19 @@ export function QualSplitDisplay() {
           >
             {displayFormat === 'line' ? '◎ Circle' : '▬ Line'}
           </button>
-          <button
-            onClick={() => setFalseStartEnabled((v) => !v)}
-            className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
-              falseStartEnabled
-                ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
-                : 'text-stone-600 border-stone-700'
-            }`}
-          >
-            False Start {falseStartEnabled ? 'ON' : 'OFF'}
-          </button>
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => setFalseStartEnabled((v) => !v)}
+              className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
+                falseStartEnabled
+                  ? 'text-[var(--accent)] border-[var(--accent)] accent-tint'
+                  : 'text-stone-600 border-stone-700'
+              }`}
+              title="Toggle false-start detection (dev only)"
+            >
+              False Start {falseStartEnabled ? 'ON' : 'OFF'}
+            </button>
+          )}
           <button
             onClick={() => setBuzzerEnabled((v) => !v)}
             className={`text-xs border rounded px-2 py-1 uppercase tracking-widest transition-colors ${
