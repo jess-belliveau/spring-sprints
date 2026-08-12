@@ -6,6 +6,7 @@ interface Props {
   riders: Rider[]
   currentMatchId?: string
   mirrored?: boolean
+  onSelectMatch?: (matchId: string) => void
 }
 
 function getRiderName(id: string | null, riders: Rider[]): string {
@@ -13,7 +14,7 @@ function getRiderName(id: string | null, riders: Rider[]): string {
   return riders.find((r) => r.id === id)?.name ?? 'Unknown'
 }
 
-export function BracketTree({ rounds, riders, currentMatchId, mirrored = false }: Props) {
+export function BracketTree({ rounds, riders, currentMatchId, mirrored = false, onSelectMatch }: Props) {
   const totalRounds = rounds.length
   function roundLabel(originalIdx: number): string {
     const fromEnd = totalRounds - 1 - originalIdx
@@ -41,15 +42,19 @@ export function BracketTree({ rounds, riders, currentMatchId, mirrored = false }
             >
               {round.matches.filter((m) => !m.isThirdPlace).map((match) => {
                 const isCurrent = match.id === currentMatchId
+                const isReady = !match.winnerId && !!match.topRiderId && !!match.bottomRiderId
+                const isSelectable = isReady && !!onSelectMatch
                 const topName = getRiderName(match.topRiderId, riders)
                 const bottomName = getRiderName(match.bottomRiderId, riders)
 
                 return (
                   <div
                     key={match.id}
+                    onClick={isSelectable ? () => onSelectMatch(match.id) : undefined}
                     className={clsx(
                       'border rounded-lg overflow-hidden',
-                      isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'
+                      isCurrent ? 'border-[var(--accent)]' : 'border-stone-700',
+                      isSelectable && 'cursor-pointer hover:border-stone-500 transition-colors'
                     )}
                   >
                     <div

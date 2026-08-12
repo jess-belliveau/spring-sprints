@@ -50,6 +50,26 @@ export function Bracket() {
   const setFreePairRiders = useRaceStore((s) => s.setFreePairRiders)
   const [freePairOpen, setFreePairOpen] = useState(false)
   const [declaringWinner, setDeclaringWinner] = useState(false)
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
+
+  function findMatchById(id: string): { match: BracketMatch; pool: BracketPool } | null {
+    const pools: [BracketPool, BracketRound[]][] = [['M', bracketM], ['F', bracketF], ['Open', bracketOpen]]
+    for (const [pool, rounds] of pools) {
+      for (const round of rounds) {
+        const match = round.matches.find((m) => m.id === id)
+        if (match) return { match, pool }
+      }
+    }
+    return null
+  }
+
+  function handleSelectMatch(matchId: string) {
+    setSelectedMatchId(matchId)
+    setDeclaringWinner(false)
+  }
+
+  const selected = selectedMatchId ? findMatchById(selectedMatchId) : null
+  const selectedReady = !!selected && !selected.match.winnerId && !!selected.match.topRiderId && !!selected.match.bottomRiderId
 
   const nextM = findNextMatchByRound(bracketM)
   const nextF = findNextMatchByRound(bracketF)
@@ -70,7 +90,7 @@ export function Bracket() {
     if (fReady) return nextF!
     return nextOpen ?? null
   }
-  const nextEntry = pickNextEntry()
+  const nextEntry = selectedReady ? selected : pickNextEntry()
   const nextMatch = nextEntry?.match ?? null
   function pickNextPool(): BracketPool {
     if (!isFinite(minRound)) return 'Open'
@@ -81,13 +101,14 @@ export function Bracket() {
     if (fReady) return 'F'
     return 'Open'
   }
-  const nextPool: BracketPool = pickNextPool()
+  const nextPool: BracketPool = selectedReady ? selected!.pool : pickNextPool()
 
   function handleStartMatch() {
     if (!nextMatch) return
     lastBracketPool = nextPool
     setCurrentRaceId(nextMatch.id)
     setPhase('head-to-head')
+    setSelectedMatchId(null)
   }
 
   function handleFreePairStart(data: FreePairStartData) {
@@ -163,12 +184,12 @@ export function Bracket() {
             <div className={`flex items-start gap-0 ${bracketOpen.length > 0 ? 'mb-10' : ''}`}>
               <div className="flex-1 min-w-0 overflow-x-auto">
                 <div className="text-xs font-bold uppercase tracking-widest mb-3 text-blue-400">Men</div>
-                <BracketTree rounds={bracketM} riders={riders} currentMatchId={nextMatch?.id} />
+                <BracketTree rounds={bracketM} riders={riders} currentMatchId={nextMatch?.id} onSelectMatch={handleSelectMatch} />
               </div>
               <div className="w-px self-stretch bg-stone-700 mx-4 shrink-0" />
               <div className="flex-1 min-w-0 overflow-x-auto flex flex-col items-end">
                 <div className="text-xs font-bold uppercase tracking-widest mb-3 text-pink-400 text-right">Women</div>
-                <BracketTree rounds={bracketF} riders={riders} currentMatchId={nextMatch?.id} mirrored />
+                <BracketTree rounds={bracketF} riders={riders} currentMatchId={nextMatch?.id} onSelectMatch={handleSelectMatch} mirrored />
               </div>
             </div>
           ) : (
@@ -181,7 +202,7 @@ export function Bracket() {
                     {sec.label}
                   </div>
                 )}
-                <BracketTree rounds={sec.rounds} riders={riders} currentMatchId={nextMatch?.id} />
+                <BracketTree rounds={sec.rounds} riders={riders} currentMatchId={nextMatch?.id} onSelectMatch={handleSelectMatch} />
               </div>
             ))
           )}
@@ -192,7 +213,7 @@ export function Bracket() {
               {hasGenderSplit && (
                 <div className="text-xs font-bold uppercase tracking-widest mb-3 text-stone-400">Open</div>
               )}
-              <BracketTree rounds={bracketOpen} riders={riders} currentMatchId={nextMatch?.id} />
+              <BracketTree rounds={bracketOpen} riders={riders} currentMatchId={nextMatch?.id} onSelectMatch={handleSelectMatch} />
             </div>
           )}
 
@@ -210,11 +231,16 @@ export function Bracket() {
                     const topName = riders.find((r: Rider) => r.id === m.topRiderId)?.name ?? 'TBD'
                     const bottomName = riders.find((r: Rider) => r.id === m.bottomRiderId)?.name ?? 'TBD'
                     const mirrored = pool === 'F'
+                    const isReady = !m.winnerId && !!m.topRiderId && !!m.bottomRiderId
+                    const isCurrent = m.id === nextMatch?.id
                     return (
                       <>
                         {i === 1 && <div className="w-px self-stretch bg-stone-800 mx-4 shrink-0" />}
                         <div key={pool} className={`flex-1 min-w-0 flex ${mirrored ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`min-w-[200px] border rounded-lg overflow-hidden ${m.winnerId ? 'border-stone-700' : 'border-stone-700 opacity-60'}`}>
+                          <div
+                            onClick={isReady ? () => handleSelectMatch(m.id) : undefined}
+                            className={`min-w-[200px] border rounded-lg overflow-hidden ${isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'} ${!m.winnerId ? 'opacity-60' : ''} ${isReady ? 'cursor-pointer hover:border-stone-500 transition-colors' : ''}`}
+                          >
                             <div className={`px-3 py-2 text-sm font-medium border-b border-stone-700 ${mirrored ? 'text-right' : ''} ${m.winnerId === m.topRiderId && m.winnerId ? 'text-green-400 bg-stone-800' : 'text-stone-300 bg-stone-900'}`}>{topName}</div>
                             <div className={`px-3 py-2 text-sm font-medium ${mirrored ? 'text-right' : ''} ${m.winnerId === m.bottomRiderId && m.winnerId ? 'text-green-400 bg-stone-800' : 'text-stone-300 bg-stone-900'}`}>{bottomName}</div>
                           </div>
@@ -230,6 +256,8 @@ export function Bracket() {
                     if (!m) return null
                     const topName = riders.find((r: Rider) => r.id === m.topRiderId)?.name ?? 'TBD'
                     const bottomName = riders.find((r: Rider) => r.id === m.bottomRiderId)?.name ?? 'TBD'
+                    const isReady = !m.winnerId && !!m.topRiderId && !!m.bottomRiderId
+                    const isCurrent = m.id === nextMatch?.id
                     return (
                       <div key={sec.pool} className="flex flex-col gap-1 min-w-[200px]">
                         {sec.label && (
@@ -237,7 +265,10 @@ export function Bracket() {
                             sec.pool === 'M' ? 'text-blue-400' : sec.pool === 'F' ? 'text-pink-400' : 'text-stone-400'
                           }`}>{sec.label}</div>
                         )}
-                        <div className={`w-full border border-stone-700 rounded-lg overflow-hidden ${!m.winnerId ? 'opacity-60' : ''}`}>
+                        <div
+                          onClick={isReady ? () => handleSelectMatch(m.id) : undefined}
+                          className={`w-full border rounded-lg overflow-hidden ${isCurrent ? 'border-[var(--accent)]' : 'border-stone-700'} ${!m.winnerId ? 'opacity-60' : ''} ${isReady ? 'cursor-pointer hover:border-stone-500 transition-colors' : ''}`}
+                        >
                           <div className={`px-3 py-2 text-sm font-medium border-b border-stone-700 ${m.winnerId === m.topRiderId && m.winnerId ? 'text-green-400 bg-stone-800' : 'text-stone-400 bg-stone-900'}`}>{topName}</div>
                           <div className={`px-3 py-2 text-sm font-medium ${m.winnerId === m.bottomRiderId && m.winnerId ? 'text-green-400 bg-stone-800' : 'text-stone-400 bg-stone-900'}`}>{bottomName}</div>
                         </div>
@@ -283,6 +314,7 @@ export function Bracket() {
                         lastBracketPool = nextPool
                         advanceBracket(nextMatch.id, nextMatch.topRiderId!, nanoid(), nextPool)
                         setDeclaringWinner(false)
+                        setSelectedMatchId(null)
                       }}
                       className="px-10 py-3 bg-stone-700 hover:bg-stone-600 text-white text-lg font-bold tracking-widest uppercase rounded-lg transition-colors"
                     >
@@ -293,6 +325,7 @@ export function Bracket() {
                         lastBracketPool = nextPool
                         advanceBracket(nextMatch.id, nextMatch.bottomRiderId!, nanoid(), nextPool)
                         setDeclaringWinner(false)
+                        setSelectedMatchId(null)
                       }}
                       className="px-10 py-3 bg-stone-700 hover:bg-stone-600 text-white text-lg font-bold tracking-widest uppercase rounded-lg transition-colors"
                     >
